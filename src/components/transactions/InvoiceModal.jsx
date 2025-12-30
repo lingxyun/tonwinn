@@ -78,7 +78,7 @@ const InvoiceModal = ({ isOpen, onClose, transaction, customer }) => {
                                 <p className="text-slate-500 mt-1">RECEIPT / INVOICE</p>
                             </div>
                             <div className="text-right">
-                                <h3 className="text-xl font-bold text-primary">财务管理系统</h3>
+                                <h3 className="text-xl font-bold text-primary">同为厨业</h3>
                                 <p className="text-sm text-slate-500 mt-1">日期: {transaction.date}</p>
                                 <p className="text-sm text-slate-500">单号: #{transaction.id}</p>
                             </div>
