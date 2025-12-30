@@ -1,0 +1,114 @@
+
+import React, { useState, useEffect } from 'react';
+import { useSettings } from '../context/SettingsContext';
+import { Save, Settings as SettingsIcon } from 'lucide-react';
+
+const Settings = () => {
+    const { settings, updateSettings } = useSettings();
+    const [formData, setFormData] = useState({
+        system_name: '',
+        system_subtitle: '',
+        page_title: ''
+    });
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        if (settings) {
+            setFormData({
+                system_name: settings.system_name || '',
+                system_subtitle: settings.system_subtitle || '',
+                page_title: settings.page_title || ''
+            });
+        }
+    }, [settings]);
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsSaving(true);
+        await updateSettings(formData);
+        setIsSaving(false);
+    };
+
+    return (
+        <div className="space-y-6 animate-in fade-in duration-500">
+            <div className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <SettingsIcon className="w-8 h-8 text-slate-500" />
+                        系统设置
+                    </h1>
+                    <p className="text-slate-500 dark:text-slate-400 mt-1">
+                        自定义系统的基本配置
+                    </p>
+                </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
+                <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            系统名称
+                        </label>
+                        <input
+                            type="text"
+                            name="system_name"
+                            value={formData.system_name}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-slate-900 dark:text-white"
+                            placeholder="例如：财务通"
+                        />
+                        <p className="text-xs text-slate-500">显示在侧边栏顶部的系统主标题。</p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            系统副标题
+                        </label>
+                        <input
+                            type="text"
+                            name="system_subtitle"
+                            value={formData.system_subtitle}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-slate-900 dark:text-white"
+                            placeholder="例如：企业财务管理系统"
+                        />
+                        <p className="text-xs text-slate-500">显示在主标题下方的小字说明。</p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            浏览器网页标题
+                        </label>
+                        <input
+                            type="text"
+                            name="page_title"
+                            value={formData.page_title}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-slate-900 dark:text-white"
+                            placeholder="例如：财务通 - 专业财务管理"
+                        />
+                        <p className="text-xs text-slate-500">修改浏览器标签页显示的标题内容。</p>
+                    </div>
+
+                    <div className="pt-4">
+                        <button
+                            type="submit"
+                            disabled={isSaving}
+                            className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 disabled:opacity-50"
+                        >
+                            <Save className="w-4 h-4" />
+                            {isSaving ? '保存中...' : '保存更改'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+export default Settings;
