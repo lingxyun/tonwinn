@@ -324,15 +324,29 @@ export const DataProvider = ({ children }) => {
 
     // --- Stats ---
     const getStats = () => {
-        const totalRevenue = transactions
-            .filter(t => t.type === 'Income')
-            .reduce((acc, curr) => acc + curr.amount, 0);
+        const currentYear = new Date().getFullYear();
+        const lastYear = currentYear - 1;
 
-        // Mocking growth for now as we don't have historical buckets easily without more complex logic
-        const growth = "+12.5%";
+        const getRevenueForYear = (year) => {
+            return transactions
+                .filter(t => t.type === 'Income' && t.status === 'Completed' && new Date(t.date).getFullYear() === year)
+                .reduce((acc, curr) => acc + curr.amount, 0);
+        };
+
+        const thisYearRevenue = getRevenueForYear(currentYear);
+        const lastYearRevenue = getRevenueForYear(lastYear);
+
+        let growthRate = 0;
+        if (lastYearRevenue > 0) {
+            growthRate = ((thisYearRevenue - lastYearRevenue) / lastYearRevenue) * 100;
+        } else if (thisYearRevenue > 0) {
+            growthRate = 100;
+        }
+
+        const growth = (growthRate > 0 ? "+" : "") + growthRate.toFixed(1) + "%";
 
         return {
-            totalRevenue,
+            totalRevenue: thisYearRevenue,
             totalOrders: transactions.length,
             activeCustomers: customers.filter(c => c.status === 'Active').length,
             growth

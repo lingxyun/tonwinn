@@ -36,7 +36,7 @@ const CountUp = ({ value, prefix = "", suffix = "" }) => {
     return <span>{prefix}{displayValue.toLocaleString(undefined, { minimumFractionDigits: typeof value === 'number' && !Number.isInteger(value) ? 2 : 0, maximumFractionDigits: 2 })}{suffix}</span>;
 };
 
-const StatCard = ({ title, value, change, icon: Icon, trend, index }) => (
+const StatCard = ({ title, value, change, icon: Icon, trend, index, label = "较上月" }) => (
     <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -68,7 +68,7 @@ const StatCard = ({ title, value, change, icon: Icon, trend, index }) => (
                 {trend === 'up' ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
                 {change}
             </div>
-            <span className="text-xs text-slate-400 dark:text-slate-500 ml-2">较上月</span>
+            <span className="text-xs text-slate-400 dark:text-slate-500 ml-2">{label}</span>
         </div>
     </motion.div>
 );
@@ -178,7 +178,7 @@ const Dashboard = () => {
 
             {/* Metrics Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                <StatCard index={0} title="年度总营收" value={`¥${contextStats?.totalRevenue || 0} `} change={contextStats?.growth || "+0%"} icon={DollarSign} trend="up" />
+                <StatCard index={0} title="年度总营收" value={`¥${contextStats?.totalRevenue || 0} `} change={contextStats?.growth || "+0%"} icon={DollarSign} trend="up" label="较去年" />
                 <StatCard index={1} title="预计资产结余" value={netProfit} change="+0%" icon={Activity} trend={netProfit >= 0 ? "up" : "down"} />
                 <StatCard index={2} title="累计单据总数" value={contextStats?.totalOrders || 0} change="+0%" icon={ShoppingBag} trend="up" />
                 <StatCard index={3} title="当前活跃客户" value={contextStats?.activeCustomers || 0} change="+0" icon={Users} trend="up" />
