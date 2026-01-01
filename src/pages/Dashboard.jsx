@@ -363,7 +363,7 @@ const Dashboard = () => {
                                     <Tooltip
                                         contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: '15px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
                                     />
-                                    <Area type="step" dataKey="amount" stroke="#10b981" strokeWidth={3} fill="url(#colorWeekly)" />
+                                    <Area type="monotone" dataKey="amount" stroke="#10b981" strokeWidth={3} fill="url(#colorWeekly)" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
