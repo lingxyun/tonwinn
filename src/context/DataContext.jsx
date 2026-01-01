@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { customers as initialCustomers, transactions as initialTransactions } from '../utils/mockData';
 import { toast } from 'sonner';
 import { API_BASE_URL } from '../config';
+import Papa from 'papaparse';
 
 const DataContext = createContext();
 
@@ -20,14 +21,33 @@ export const DataProvider = ({ children }) => {
     const [transactions, setTransactions] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || null);
+    const [token, setToken] = useState(localStorage.getItem('token') || null);
+
+    // Helper for fetch with token
+    const fetchWithAuth = async (url, options = {}) => {
+        const headers = {
+            'Content-Type': 'application/json',
+            ...options.headers,
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        return fetch(url, { ...options, headers });
+    };
 
     // --- Initial Load ---
     useEffect(() => {
         const fetchData = async () => {
+            if (!token) {
+                setLoading(false);
+                return;
+            }
             try {
+                // Initial load with cache busting
                 const [custRes, txRes, catRes] = await Promise.all([
-                    fetch(`${API_BASE_URL}/api/customers`),
-                    fetch(`${API_BASE_URL}/api/transactions`),
+                    fetchWithAuth(`${API_BASE_URL}/api/customers?t=${Date.now()}`),
+                    fetchWithAuth(`${API_BASE_URL}/api/transactions?t=${Date.now()}`),
                     fetch(`${API_BASE_URL}/api/categories`)
                 ]);
 
@@ -47,7 +67,7 @@ export const DataProvider = ({ children }) => {
             }
         };
         fetchData();
-    }, []);
+    }, [token]); // Re-fetch when token changes
 
     // --- Persistence ---
 
@@ -55,9 +75,8 @@ export const DataProvider = ({ children }) => {
     // --- Actions: Customers ---
     const addCustomer = async (customerData) => {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/customers`, {
+            const res = await fetchWithAuth(`${API_BASE_URL}/api/customers`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...customerData,
                     balance: parseFloat(customerData.balance || 0)
@@ -75,9 +94,8 @@ export const DataProvider = ({ children }) => {
 
     const updateCustomer = async (updatedData) => {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/customers/${updatedData.id}`, {
+            const res = await fetchWithAuth(`${API_BASE_URL}/api/customers/${updatedData.id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedData)
             });
             if (res.ok) {
@@ -94,20 +112,24 @@ export const DataProvider = ({ children }) => {
 
     const deleteCustomer = async (id) => {
         try {
-            await fetch(`${API_BASE_URL}/api/customers/${id}`, { method: 'DELETE' });
-            setCustomers((prev) => prev.filter((c) => c.id !== id));
-            toast.success('客户已删除');
+            const res = await fetchWithAuth(`${API_BASE_URL}/api/customers/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                setCustomers((prev) => prev.filter((c) => c.id !== id));
+                toast.success('客户已删除');
+            } else {
+                const err = await res.json();
+                toast.error('删除失败', { description: err.error || '服务器拒绝了请求，请检查权限' });
+            }
         } catch (error) {
-            toast.error('删除失败');
+            toast.error('删除失败', { description: '网络连接异常' });
         }
     };
 
     // --- Actions: Categories ---
     const addCategory = async (category) => {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/categories`, {
+            const res = await fetchWithAuth(`${API_BASE_URL}/api/categories`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(category)
             });
             if (res.ok) {
@@ -156,9 +178,8 @@ export const DataProvider = ({ children }) => {
         };
 
         try {
-            const res = await fetch(`${API_BASE_URL}/api/transactions`, {
+            const res = await fetchWithAuth(`${API_BASE_URL}/api/transactions`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
@@ -167,7 +188,8 @@ export const DataProvider = ({ children }) => {
                 setTransactions((prev) => [newTx, ...prev]);
 
                 // Refresh customers to get updated balances
-                const custRes = await fetch(`${API_BASE_URL}/api/customers`);
+                // Refresh customers to get updated balances
+                const custRes = await fetchWithAuth(`${API_BASE_URL}/api/customers?t=${Date.now()}`);
                 if (custRes.ok) setCustomers(await custRes.json());
 
                 toast.success('交易已记录');
@@ -179,15 +201,24 @@ export const DataProvider = ({ children }) => {
 
     const updateTransaction = async (updatedTx) => {
         try {
-            await fetch(`${API_BASE_URL}/api/transactions/${updatedTx.id}`, {
+            const res = await fetchWithAuth(`${API_BASE_URL}/api/transactions/${updatedTx.id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedTx)
             });
-            setTransactions((prev) =>
-                prev.map((tx) => (tx.id === updatedTx.id ? { ...tx, ...updatedTx } : tx))
-            );
-            toast.success('交易已更新');
+
+            if (res.ok) {
+                setTransactions((prev) =>
+                    prev.map((tx) => (tx.id === updatedTx.id ? { ...tx, ...updatedTx } : tx))
+                );
+                // Refresh customers to get updated balances
+                // Refresh customers to get updated balances
+                const custRes = await fetchWithAuth(`${API_BASE_URL}/api/customers?t=${Date.now()}`);
+                if (custRes.ok) setCustomers(await custRes.json());
+
+                toast.success('交易已更新，余额已同步');
+            } else {
+                toast.error('更新失败');
+            }
         } catch {
             toast.error('更新失败');
         }
@@ -195,11 +226,20 @@ export const DataProvider = ({ children }) => {
 
     const deleteTransaction = async (id) => {
         try {
-            await fetch(`${API_BASE_URL}/api/transactions/${id}`, { method: 'DELETE' });
-            setTransactions((prev) => prev.filter((tx) => tx.id !== id));
-            toast.success('交易已删除');
+            const res = await fetchWithAuth(`${API_BASE_URL}/api/transactions/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                setTransactions((prev) => prev.filter((tx) => tx.id !== id));
+                // Refresh customers to get updated balances
+                // Refresh customers to get updated balances
+                const custRes = await fetchWithAuth(`${API_BASE_URL}/api/customers?t=${Date.now()}`);
+                if (custRes.ok) setCustomers(await custRes.json());
+                toast.success('交易已删除');
+            } else {
+                const err = await res.json();
+                toast.error('删除失败', { description: err.error || '无法执行删除' });
+            }
         } catch {
-            toast.error('删除失败');
+            toast.error('删除失败', { description: '网络连接异常' });
         }
     };
 
@@ -219,18 +259,16 @@ export const DataProvider = ({ children }) => {
 
     const exportCustomersToCSV = () => {
         const headers = ['ID', '姓名', '电话', '地址', '账户余额', '状态'];
-        const formatRow = (row) => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(",");
+        const rows = customers.map(c => ({
+            'ID': c.id,
+            '姓名': c.name,
+            '电话': c.phone,
+            '地址': c.address || '',
+            '账户余额': c.balance,
+            '状态': c.status === 'Active' ? '活跃' : '停用'
+        }));
 
-        const rows = customers.map(c => [
-            c.id,
-            c.name,
-            c.phone,
-            c.address || '',
-            c.balance,
-            c.status === 'Active' ? '活跃' : '停用'
-        ]);
-
-        const csvContent = [headers, ...rows].map(formatRow).join("\n");
+        const csvContent = Papa.unparse({ fields: headers, data: rows });
         downloadCSV(csvContent, `客户名录_${new Date().toLocaleDateString()}.csv`);
     };
 
@@ -264,55 +302,55 @@ export const DataProvider = ({ children }) => {
     };
 
     const importCustomersFromCSV = async (file) => {
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            const text = e.target.result;
-            const lines = text.split("\n");
-            // Skip header, filter empty lines
-            const dataLines = lines.slice(1).filter(line => line.trim() !== "");
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: async (results) => {
+                const data = results.data;
+                let successCount = 0;
+                let failCount = 0;
 
-            let successCount = 0;
-            let failCount = 0;
+                for (const item of data) {
+                    const name = item['姓名'];
+                    const phone = item['电话'];
+                    const address = item['地址'];
+                    const balance = item['账户余额'];
+                    const status = item['状态'];
 
-            for (const line of dataLines) {
-                // simple split by comma, could be improved with a lib if needed
-                const [id, name, phone, address, balance, status] = line.split(",").map(val => val.trim());
-
-                if (name && phone) {
-                    try {
-                        const res = await fetch(`${API_BASE_URL}/api/customers`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                name,
-                                phone,
-                                address: address || '',
-                                email: '',
-                                balance: parseFloat(balance || 0),
-                                status: status === '活跃' ? 'Active' : 'Inactive'
-                            })
-                        });
-                        if (res.ok) successCount++;
-                        else failCount++;
-                    } catch {
-                        failCount++;
+                    if (name && phone) {
+                        try {
+                            const res = await fetchWithAuth(`${API_BASE_URL}/api/customers`, {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    name,
+                                    phone,
+                                    address: address || '',
+                                    email: '',
+                                    balance: parseFloat(balance || 0),
+                                    status: status === '活跃' ? 'Active' : 'Inactive'
+                                })
+                            });
+                            if (res.ok) successCount++;
+                            else failCount++;
+                        } catch {
+                            failCount++;
+                        }
                     }
                 }
-            }
 
-            // Refresh data
-            const custRes = await fetch('/api/customers');
-            if (custRes.ok) setCustomers(await custRes.json());
+                // Refresh data
+                const custRes = await fetch(`${API_BASE_URL}/api/customers`);
+                if (custRes.ok) setCustomers(await custRes.json());
 
-            if (successCount > 0) {
-                toast.success(`成功导入 ${successCount} 个客户`, {
-                    description: failCount > 0 ? `失败 ${failCount} 个` : undefined
-                });
-            } else if (failCount > 0) {
-                toast.error('导入失败，请检查文件格式');
+                if (successCount > 0) {
+                    toast.success(`成功导入 ${successCount} 个客户`, {
+                        description: failCount > 0 ? `失败 ${failCount} 个` : undefined
+                    });
+                } else if (failCount > 0) {
+                    toast.error('导入失败，请检查文件格式');
+                }
             }
-        };
-        reader.readAsText(file);
+        });
     };
 
     // --- Actions: System ---
@@ -364,17 +402,34 @@ export const DataProvider = ({ children }) => {
 
     const resetData = async () => {
         try {
-            await fetch(`${API_BASE_URL}/api/reset`, { method: 'POST' });
-            setCustomers([]);
-            setTransactions([]);
-            toast.success('系统已重置', { description: '所有数据已清空' });
+            const res = await fetchWithAuth(`${API_BASE_URL}/api/reset`, { method: 'POST' });
+            if (res.ok) {
+                setCustomers([]);
+                setTransactions([]);
+                toast.success('系统已重置', { description: '所有数据已清空' });
+            } else {
+                const err = await res.json();
+                toast.error('重置失败', { description: err.error || '无法执行重置，请确认管理员权限' });
+            }
         } catch {
-            toast.error('重置失败');
+            toast.error('重置失败', { description: '网络连接异常' });
         }
     };
 
     return (
         <DataContext.Provider value={{
+            user,
+            token,
+            setToken: (t) => {
+                localStorage.setItem('token', t);
+                setToken(t);
+            },
+            logout: () => {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                setToken(null);
+                setUser(null);
+            },
             customers,
             transactions,
             categories,

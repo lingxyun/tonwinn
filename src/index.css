@@ -129,6 +129,16 @@
   transition: opacity 300ms, transform 300ms;
 }
 
+/* Remove Recharts focus outline */
+.recharts-wrapper,
+.recharts-wrapper *,
+.recharts-surface,
+.recharts-surface *,
+.recharts-accessibility-layer:focus {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .page-exit {
   opacity: 1;
   transform: translateY(0);

@@ -56,7 +56,7 @@ const Orders = () => {
                 </div>
                 <button
                     onClick={() => setIsTxModalOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm"
+                    className="hidden md:flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm"
                 >
                     <Plus className="w-4 h-4" />
                     新建交易
@@ -65,8 +65,8 @@ const Orders = () => {
 
             <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
                 {/* Filters */}
-                <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap gap-4 items-center justify-between">
-                    <div className="relative flex-1 max-w-xs">
+                <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+                    <div className="relative flex-1 md:max-w-xs">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input
                             type="text"
@@ -78,7 +78,7 @@ const Orders = () => {
                     </div>
                     <div className="flex flex-wrap gap-2 items-center">
                         <select
-                            className="px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 focus:outline-none focus:border-primary"
+                            className="flex-1 md:flex-none px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 focus:outline-none focus:border-primary"
                             value={filterType}
                             onChange={(e) => setFilterType(e.target.value)}
                         >
@@ -88,7 +88,7 @@ const Orders = () => {
                         </select>
 
                         <select
-                            className="px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 focus:outline-none focus:border-primary"
+                            className="flex-1 md:flex-none px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 focus:outline-none focus:border-primary"
                             value={filterCategory}
                             onChange={(e) => setFilterCategory(e.target.value)}
                         >
@@ -97,7 +97,7 @@ const Orders = () => {
                         </select>
 
                         <select
-                            className="px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 focus:outline-none focus:border-primary max-w-[140px]"
+                            className="flex-1 md:flex-none px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 focus:outline-none focus:border-primary md:max-w-[140px]"
                             value={filterCustomer}
                             onChange={(e) => setFilterCustomer(e.target.value)}
                         >
@@ -105,12 +105,12 @@ const Orders = () => {
                             {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
 
-                        <div className="flex items-center gap-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2">
+                        <div className="flex-1 md:flex-none flex items-center gap-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2">
                             <span className="text-xs text-slate-400">¥</span>
                             <input
                                 type="number"
                                 placeholder="Min"
-                                className="px-1 py-2 text-sm focus:outline-none bg-transparent w-16 text-slate-900 dark:text-white"
+                                className="px-1 py-2 text-sm focus:outline-none bg-transparent w-full md:w-16 text-slate-900 dark:text-white"
                                 value={filterAmount.min}
                                 onChange={(e) => setFilterAmount({ ...filterAmount, min: e.target.value })}
                             />
@@ -118,24 +118,24 @@ const Orders = () => {
                             <input
                                 type="number"
                                 placeholder="Max"
-                                className="px-1 py-2 text-sm focus:outline-none bg-transparent w-16 text-slate-900 dark:text-white"
+                                className="px-1 py-2 text-sm focus:outline-none bg-transparent w-full md:w-16 text-slate-900 dark:text-white"
                                 value={filterAmount.max}
                                 onChange={(e) => setFilterAmount({ ...filterAmount, max: e.target.value })}
                             />
                         </div>
 
-                        <div className="flex items-center gap-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2">
-                            <Calendar className="w-4 h-4 text-slate-400" />
+                        <div className="flex-1 md:flex-none flex items-center gap-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2 overflow-hidden">
+                            <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
                             <input
                                 type="date"
-                                className="px-2 py-2 text-sm focus:outline-none bg-transparent w-32 text-slate-900 dark:text-white"
+                                className="px-2 py-2 text-sm focus:outline-none bg-transparent w-full md:w-32 text-slate-900 dark:text-white"
                                 value={dateRange.start}
                                 onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
                             />
-                            <span className="text-slate-400">-</span>
+                            <span className="text-slate-400 shrink-0">-</span>
                             <input
                                 type="date"
-                                className="px-2 py-2 text-sm focus:outline-none bg-transparent w-32 text-slate-900 dark:text-white"
+                                className="px-2 py-2 text-sm focus:outline-none bg-transparent w-full md:w-32 text-slate-900 dark:text-white"
                                 value={dateRange.end}
                                 onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
                             />
@@ -143,8 +143,8 @@ const Orders = () => {
                     </div>
                 </div>
 
-                {/* Table */}
-                <div className="overflow-x-auto">
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left">
                         <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs uppercase font-medium">
                             <tr>
@@ -166,7 +166,7 @@ const Orders = () => {
                                     <tr
                                         key={tx.id}
                                         className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group"
-                                        onClick={() => toast.info(`交易详情: ${tx.id} `, { description: tx.description })}
+                                        onClick={() => toast.info(`交易详情: ${tx.id}`, { description: tx.description })}
                                     >
                                         <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-slate-100">{tx.id}</td>
                                         <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{tx.description}</td>
@@ -243,6 +243,80 @@ const Orders = () => {
                             })}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+                    {filteredTx.map((tx) => {
+                        const customer = customers.find(c => c.id === tx.customerId);
+                        return (
+                            <div
+                                key={tx.id}
+                                className="p-4 space-y-3 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors"
+                                onClick={() => toast.info(`交易详情: ${tx.id}`, { description: tx.description })}
+                            >
+                                <div className="flex justify-between items-start">
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-bold text-slate-900 dark:text-white">#{tx.id}</span>
+                                            <span className={cn(
+                                                "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider",
+                                                tx.type === 'Income' ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"
+                                            )}>
+                                                {tx.type === 'Income' ? '收入' : '支出'}
+                                            </span>
+                                        </div>
+                                        <div className="text-xs text-slate-500 font-medium">{customer?.name || '未知客户'}</div>
+                                    </div>
+                                    <div className={cn(
+                                        "text-lg font-black tracking-tight",
+                                        tx.type === 'Income' ? "text-emerald-600" : "text-slate-900 dark:text-white"
+                                    )}>
+                                        {tx.type === 'Income' ? '+' : '-'} ¥{tx.amount.toFixed(2)}
+                                    </div>
+                                </div>
+                                <div className="text-sm text-slate-600 dark:text-slate-400 line-clamp-1">{tx.description}</div>
+                                <div className="flex justify-between items-center pt-2">
+                                    <div className="text-[10px] text-slate-400 font-medium">
+                                        {tx.date} · {tx.category || '未分类'}
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setEditingTx(tx);
+                                                setIsEditModalOpen(true);
+                                            }}
+                                            className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors"
+                                        >
+                                            <Edit className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedInvoiceTx(tx);
+                                                setIsInvoiceModalOpen(true);
+                                            }}
+                                            className="p-2 text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-500/10 rounded-lg transition-colors"
+                                        >
+                                            <FileText className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (window.confirm('确定要删除这条交易记录吗？')) {
+                                                    deleteTransaction(tx.id);
+                                                }
+                                            }}
+                                            className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    })}
                 </div>
             </div>
             {/* Edit Modal */}

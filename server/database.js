@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import bcrypt from 'bcryptjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -58,6 +59,7 @@ export function initDb() {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
+            role TEXT DEFAULT 'User',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
         `).run();
@@ -65,9 +67,9 @@ export function initDb() {
     // Seed Admin User
     const admin = db.prepare("SELECT * FROM users WHERE username = 'admin'").get();
     if (!admin) {
-        // In a real app, hash this password!
-        db.prepare("INSERT INTO users (username, password) VALUES (?, ?)").run('admin', '123456');
-        console.log("Seeded default admin user.");
+        const hashedPassword = bcrypt.hashSync('123456', 10);
+        db.prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)").run('admin', hashedPassword, 'Admin');
+        console.log("Seeded default admin user with hashed password and Admin role.");
     }
 
     // Create Settings Table
@@ -113,6 +115,18 @@ export function initDb() {
         }
         console.log("Seeded default categories.");
     }
+
+    // Create Audit Logs Table
+    db.prepare(`
+        CREATE TABLE IF NOT EXISTS audit_logs(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            action TEXT NOT NULL,
+            details TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+    `).run();
 
     return db;
 }

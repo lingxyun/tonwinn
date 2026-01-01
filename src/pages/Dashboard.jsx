@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { ArrowUpRight, ArrowDownRight, Users, DollarSign, ShoppingBag, Activity, Trash2, Download, Upload, Plus } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 import Modal from '../components/ui/Modal';
 import CustomerForm from '../components/customers/CustomerForm';
 import CategoryPieChart from '../components/dashboard/CategoryPieChart';
@@ -97,21 +97,41 @@ const Dashboard = () => {
         for (let i = 5; i >= 0; i--) {
             const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
             const key = d.toLocaleString('zh-CN', { month: 'short' });
-            last6Months[key] = 0;
+            last6Months[key] = { revenue: 0, expense: 0 };
         }
         localTransactions.forEach(tx => {
-            if (tx.type === 'Income' && tx.status === 'Completed') {
+            if (tx.status === 'Completed') {
                 const date = new Date(tx.date);
                 const monthName = date.toLocaleString('zh-CN', { month: 'short' });
                 if (last6Months.hasOwnProperty(monthName)) {
-                    last6Months[monthName] += tx.amount;
+                    if (tx.type === 'Income') last6Months[monthName].revenue += tx.amount;
+                    else last6Months[monthName].expense += tx.amount;
                 }
             }
         });
         return Object.keys(last6Months).map(month => ({
             name: month,
-            revenue: last6Months[month]
+            revenue: last6Months[month].revenue,
+            expense: last6Months[month].expense
         }));
+    }, [localTransactions]);
+
+    const weeklyData = React.useMemo(() => {
+        const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+        const data = days.map(day => ({ name: day, amount: 0 }));
+
+        const now = new Date();
+        const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)));
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        localTransactions.forEach(tx => {
+            const txDate = new Date(tx.date);
+            if (txDate >= startOfWeek && tx.type === 'Income') {
+                const dayIndex = (txDate.getDay() + 6) % 7;
+                data[dayIndex].amount += tx.amount;
+            }
+        });
+        return data;
     }, [localTransactions]);
 
     const handleExport = () => {
@@ -192,31 +212,33 @@ const Dashboard = () => {
                     <div className="glass-card rounded-[2rem] p-8 min-h-[480px] flex flex-col">
                         <div className="flex justify-between items-start mb-6">
                             <div>
-                                <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">业务增长引擎</h2>
-                                <p className="text-slate-500 mt-1 text-sm font-medium">过去六个月营收趋势全景视图</p>
+                                <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">收支利润全景</h2>
+                                <p className="text-slate-500 mt-1 text-sm font-medium">半年内收入与支出的对比透视</p>
                             </div>
-                            <div className="bg-primary/5 px-4 py-2 rounded-xl border border-primary/10">
+                            <div className="flex gap-4">
                                 <div className="flex items-center gap-2">
                                     <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                                    <span className="text-sm font-bold text-primary uppercase">营收趋势</span>
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">营收</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-slate-200" />
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">支出</span>
                                 </div>
                             </div>
                         </div>
                         <div className="h-[320px] w-full mt-auto">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 30 }}>
-                                    <defs>
-                                        <linearGradient id="colorRevenueUI" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
-                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
+                                <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                                     <CartesianGrid strokeDasharray="8 8" vertical={false} stroke="#E2E8F0" strokeOpacity={0.3} />
                                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 13, fontWeight: 600 }} dy={10} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 13, fontWeight: 600 }} width={40} />
-                                    <Tooltip cursor={{ stroke: '#3b82f6', strokeWidth: 1 }} contentStyle={{ backgroundColor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(20px)', borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.1)' }} />
-                                    <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={5} fillOpacity={1} fill="url(#colorRevenueUI)" animationDuration={2500} />
-                                </AreaChart>
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 13, fontWeight: 600 }} width={45} />
+                                    <Tooltip
+                                        cursor={{ fill: 'rgba(59, 130, 246, 0.05)' }}
+                                        contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(10px)', borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}
+                                    />
+                                    <Bar dataKey="revenue" name="营收" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={20} />
+                                    <Bar dataKey="expense" name="支出" fill="#e2e8f0" radius={[6, 6, 0, 0]} barSize={20} />
+                                </BarChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
@@ -296,7 +318,37 @@ const Dashboard = () => {
 
                 {/* Sidebar Cards Area - Spans 1 col */}
                 <div className="flex flex-col gap-10">
-                    {/* 1. AI Insights */}
+                    {/* 1. Weekly Performance */}
+                    <div className="glass-card rounded-[2rem] p-8 flex flex-col">
+                        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">本周营收分布</h2>
+                        <p className="text-xs text-slate-500 mb-6 font-medium">从周一到周日的入账统计</p>
+                        <div className="h-[200px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={weeklyData} margin={{ top: 10, right: 30, left: 30, bottom: 20 }}>
+                                    <defs>
+                                        <linearGradient id="colorWeekly" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <XAxis
+                                        dataKey="name"
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 600 }}
+                                        dy={10}
+                                        interval={0}
+                                    />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: '15px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                                    />
+                                    <Area type="step" dataKey="amount" stroke="#10b981" strokeWidth={3} fill="url(#colorWeekly)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    {/* 2. AI Insights */}
                     <AIInsightsCard transactions={localTransactions} customers={customers} />
 
                     {/* 2. Composition Analysis */}

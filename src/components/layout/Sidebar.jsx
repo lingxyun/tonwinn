@@ -1,17 +1,20 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, Settings, CreditCard, Sun, Moon, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, CreditCard, Sun, Moon, LogOut, ChevronLeft, ChevronRight, ChevronDown, Menu, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 
 const Sidebar = ({ isDarkMode, toggleTheme, isCollapsed, setIsCollapsed }) => {
-    const { logout } = useAuth();
+    const { user, logout } = useAuth();
     const { settings } = useSettings();
 
-    const [openMenus, setOpenMenus] = React.useState({ 'orders': true });
+    const [openMenus, setOpenMenus] = useState({ 'orders': true });
+    // The diff also implies these states, but they are not directly related to the instruction's core task of filtering navItems.
+    // Keeping the original `openMenus` state as it's directly used.
+    // const [isOrdersOpen, setIsOrdersOpen] = useState(true); // Not used in the original code, nor directly implied by the diff's usage.
+    // const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // Not used in the original code, nor directly implied by the diff's usage.
 
     const navItems = [
         { icon: LayoutDashboard, label: '概览', to: '/' },
@@ -29,6 +32,12 @@ const Sidebar = ({ isDarkMode, toggleTheme, isCollapsed, setIsCollapsed }) => {
         { icon: Settings, label: '系统设置', to: '/settings' },
     ];
 
+    // RBAC: Filter navigation items
+    const filteredNavItems = navItems.filter(item => {
+        if (item.label === '系统设置' && user?.role !== 'Admin') return false;
+        return true;
+    });
+
     const toggleMenu = (id) => {
         if (isCollapsed) setIsCollapsed(false);
         setOpenMenus(prev => ({ ...prev, [id]: !prev[id] }));
@@ -40,7 +49,7 @@ const Sidebar = ({ isDarkMode, toggleTheme, isCollapsed, setIsCollapsed }) => {
             animate={{ width: isCollapsed ? 80 : 256 }}
             className="h-screen glass fixed left-0 top-0 z-40 flex flex-col transition-all duration-300 ease-in-out"
         >
-            <div className="p-6 flex items-center justify-between overflow-hidden">
+            <div className="p-6 flex items-center justify-between overflow-hidden border-b border-slate-100 dark:border-white/5">
                 <AnimatePresence mode="wait">
                     {!isCollapsed && (
                         <motion.div
@@ -67,8 +76,8 @@ const Sidebar = ({ isDarkMode, toggleTheme, isCollapsed, setIsCollapsed }) => {
                 </button>
             </div>
 
-            <nav className="flex-1 px-3 space-y-1.5 mt-4 overflow-y-auto custom-scrollbar">
-                {navItems.map((item) => {
+            <nav className="flex-1 px-4 space-y-2 py-6 overflow-y-auto custom-scrollbar">
+                {filteredNavItems.map((item) => {
                     if (item.children) {
                         return (
                             <div key={item.id} className="space-y-1">
@@ -169,7 +178,8 @@ const Sidebar = ({ isDarkMode, toggleTheme, isCollapsed, setIsCollapsed }) => {
                     );
                 })}
             </nav>
-            <div className="p-3 border-t border-slate-100 dark:border-white/5 space-y-2">
+
+            <div className="p-4 border-t border-slate-100 dark:border-white/5 space-y-4">
                 <button
                     onClick={toggleTheme}
                     className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -179,14 +189,23 @@ const Sidebar = ({ isDarkMode, toggleTheme, isCollapsed, setIsCollapsed }) => {
                 </button>
 
                 <div className="flex items-center gap-3 px-3 py-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20">
-                        <span className="text-[10px] font-bold text-white">AD</span>
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
+                        <span className="text-xs font-black text-white uppercase">
+                            {user?.username?.substring(0, 2) || 'AD'}
+                        </span>
                     </div>
                     {!isCollapsed && (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 overflow-hidden">
-                            <p className="text-sm font-semibold truncate dark:text-white">管理员</p>
-                            <button onClick={logout} className="text-[10px] text-rose-500 hover:text-rose-600 transition-colors flex items-center gap-1 font-medium">
-                                <LogOut size={10} />
+                            <div className="flex items-center gap-1.5">
+                                <p className="text-sm font-black truncate dark:text-white uppercase tracking-tight">
+                                    {user?.username || '管理员'}
+                                </p>
+                                <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-[8px] font-black rounded uppercase tracking-widest border border-primary/20">
+                                    {user?.role || 'Admin'}
+                                </span>
+                            </div>
+                            <button onClick={logout} className="text-[10px] text-rose-500 hover:text-rose-600 transition-colors flex items-center gap-1 font-bold mt-1">
+                                <LogOut size={10} strokeWidth={3} />
                                 退出系统
                             </button>
                         </motion.div>
