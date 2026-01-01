@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, Plus, MoreHorizontal, Phone, MapPin, Trash2, Edit, Download, Upload, FileSpreadsheet, FileText, ChevronDown, RotateCcw } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
+import { ask } from '@tauri-apps/plugin-dialog';
 import Modal from '../components/ui/Modal';
 import CustomerForm from '../components/customers/CustomerForm';
 
@@ -58,8 +59,14 @@ const Customers = () => {
         closeModal();
     };
 
-    const handleDeleteCustomer = (id, name) => {
-        if (window.confirm(`确定要删除客户 "${name}" 吗？此操作不可恢复。`)) {
+    const handleDeleteCustomer = async (id, name) => {
+        const confirmed = await ask(`确定要删除客户 "${name}" 吗？此操作不可恢复。`, {
+            title: '删除确认',
+            kind: 'warning',
+            okLabel: '确定删除',
+            cancelLabel: '取消'
+        });
+        if (confirmed) {
             deleteCustomer(id);
         }
         setActiveMenuId(null);

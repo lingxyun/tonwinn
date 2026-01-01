@@ -11,7 +11,7 @@ import AIInsightsCard from '../components/dashboard/AIInsightsCard';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { useData } from '../context/DataContext';
-import { save } from '@tauri-apps/plugin-dialog';
+import { save, ask } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
 
 const CountUp = ({ value, prefix = "", suffix = "" }) => {
@@ -187,7 +187,18 @@ const Dashboard = () => {
                     <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg">欢迎回来，这是您的实时经营数据摘要。</p>
                 </div>
                 <div className="flex flex-wrap gap-4">
-                    <button onClick={() => { if (window.confirm('清空所有数据？')) resetData() }} className="p-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-rose-500 rounded-2xl hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all premium-shadow">
+                    <button
+                        onClick={async () => {
+                            const confirmed = await ask('确定要清空所有数据吗？此操作不可恢复。', {
+                                title: '清空系统数据',
+                                kind: 'warning',
+                                okLabel: '确定删除',
+                                cancelLabel: '取消'
+                            });
+                            if (confirmed) resetData();
+                        }}
+                        className="p-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-rose-500 rounded-2xl hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all premium-shadow"
+                    >
                         <Trash2 className="w-5 h-5" />
                     </button>
                     <div className="flex bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-1.5 premium-shadow">

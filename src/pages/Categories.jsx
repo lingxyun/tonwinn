@@ -4,6 +4,7 @@ import { Plus, Edit, Trash2, Tag, Check, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
+import { ask } from '@tauri-apps/plugin-dialog';
 import CategoryAnalyticsModal from '../components/dashboard/CategoryAnalyticsModal';
 
 const CategoryCard = ({ category, onEdit, onDelete, onAnalyze }) => (
@@ -79,8 +80,14 @@ const Categories = () => {
         setEditingCategory(null);
     };
 
-    const handleDelete = (id) => {
-        if (window.confirm('确定要删除这个类别吗？')) {
+    const handleDelete = async (id) => {
+        const confirmed = await ask('确定要删除这个类别吗？', {
+            title: '删除分类',
+            kind: 'warning',
+            okLabel: '确定删除',
+            cancelLabel: '取消'
+        });
+        if (confirmed) {
             deleteCategory(id);
         }
     };

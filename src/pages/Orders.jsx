@@ -7,6 +7,7 @@ import TransactionForm from '../components/transactions/TransactionForm';
 import InvoiceModal from '../components/transactions/InvoiceModal';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
+import { ask } from '@tauri-apps/plugin-dialog';
 
 import { useData } from '../context/DataContext';
 
@@ -292,9 +293,15 @@ const Orders = () => {
                                                 <FileText className="w-4 h-4" />
                                             </button>
                                             <button
-                                                onClick={(e) => {
+                                                onClick={async (e) => {
                                                     e.stopPropagation();
-                                                    if (window.confirm('确定要删除这条交易记录吗？')) {
+                                                    const confirmed = await ask('确定要删除这条交易记录吗？', {
+                                                        title: '删除订单确认',
+                                                        kind: 'warning',
+                                                        okLabel: '确定删除',
+                                                        cancelLabel: '取消'
+                                                    });
+                                                    if (confirmed) {
                                                         deleteTransaction(tx.id);
                                                     }
                                                 }}
@@ -367,9 +374,15 @@ const Orders = () => {
                                             <FileText className="w-4 h-4" />
                                         </button>
                                         <button
-                                            onClick={(e) => {
+                                            onClick={async (e) => {
                                                 e.stopPropagation();
-                                                if (window.confirm('确定要删除这条交易记录吗？')) {
+                                                const confirmed = await ask('确定要删除这条交易记录吗？', {
+                                                    title: '删除订单确认',
+                                                    kind: 'warning',
+                                                    okLabel: '确定删除',
+                                                    cancelLabel: '取消'
+                                                });
+                                                if (confirmed) {
                                                     deleteTransaction(tx.id);
                                                 }
                                             }}
