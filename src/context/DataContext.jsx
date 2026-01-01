@@ -53,6 +53,26 @@ export const DataProvider = ({ children }) => {
         fetchData();
     }, []);
 
+    const refreshData = async () => {
+        setLoading(true);
+        try {
+            const [custData, txData, catData] = await Promise.all([
+                db.select('SELECT * FROM customers ORDER BY created_at DESC'),
+                db.select('SELECT * FROM transactions ORDER BY date DESC'),
+                db.select('SELECT * FROM categories ORDER BY created_at DESC')
+            ]);
+            setCustomers(custData);
+            setTransactions(txData);
+            setCategories(catData);
+            return true;
+        } catch (error) {
+            console.error('Refresh failed:', error);
+            return false;
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // --- Persistence ---
 
 
@@ -286,6 +306,7 @@ export const DataProvider = ({ children }) => {
     const downloadCustomerTemplate = () => {
         const headers = ['ID', '姓名', '电话', '地址', '账户余额', '状态'];
         const exampleRow = ['', '张三', '13800138000', '上海市浦东新区', '500.00', '活跃'];
+        const csvContent = Papa.unparse({ fields: headers, data: [exampleRow] });
         downloadCSV(csvContent, '客户导入模板.csv');
     };
 
@@ -602,7 +623,12 @@ export const DataProvider = ({ children }) => {
             exportTransactionDetailsToCSV,
             downloadCustomerTemplate,
             importCustomersFromCSV,
+            setCustomers,
+            setTransactions,
+            setCategories,
+            setLoading,
             importTransactionsFromCSV,
+            refreshData,
             stats: getStats()
         }}>
             {children}

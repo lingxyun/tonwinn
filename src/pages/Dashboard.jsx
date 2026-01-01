@@ -152,7 +152,7 @@ const Dashboard = () => {
                     version: "1.0",
                     timestamp: new Date().toISOString(),
                     customers: customers || [],
-                    transactions: transactions || []
+                    transactions: localTransactions || []
                 };
                 const jsonContent = JSON.stringify(backup, null, 2);
                 await writeTextFile(filePath, jsonContent);
