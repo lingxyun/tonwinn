@@ -1,16 +1,65 @@
-# React + Vite
+# 同为厨业 (Tonwinn) 财务管理系统 - 功能与任务清单
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## 📌 项目概况
+本系统是为同为厨业定制开发的现代化财务管理平台，旨在解决日常收支记录、客户账务管理及经营数据分析的需求。系统经过深度优化，已完全适配移动端访问。
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## ✅ 已完成核心功能 (Core Features)
 
-## React Compiler
+### 1. 财务交易管理 (Transactions)
+- [x] **收支记录**：支持创建收入、支出交易，包含金额、类别、日期、关联客户及备注。
+- [x] **智能筛选**：支持按时间跨度、金额范围、收支类型、客户ID多维度组合检索。
+- [x] **数据编辑与回滚**：支持修改或删除已有交易，**系统自动回滚并重新计算关联客户的余额**，确保账务绝对准确。
+- [x] **分类管理**：内置常用财务分类（如：制冷电器、厨房设备、采购支出等）。
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 2. 电子单据系统 (E-Receipts)
+- [x] **电子收据生成**：一键生成标准 A4 格式的电子收据预览。
+- [x] **多格式导出**：支持导出为 **PDF 文档** 或 **高清图片**，便于微信/打印分享。
+- [x] **智能适配**：预览界面支持移动端缩放，手机上也能清晰查看大尺寸单据。
 
-## Expanding the ESLint configuration
+### 3. 客户关系管理 (CRM)
+- [x] **客户档案**：录入与管理客户姓名、电话、地址等基础信息。
+- [x] **实时余额账户**：系统自动根据历史交易实时计算客户的**累计欠款/余额**。
+- [x] **强制数据同步**：采用强制刷新机制，防止浏览器缓存导致余额显示滞后。
+- [x] **快捷交互**：移动端支持点击电话图标一键拨号。
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 4. 数据可视化仪表盘 (Dashboard)
+- [x] **经营全景图**：首页展示总营收、总支出、净利润及总交易笔数。
+- [x] **每周营收趋势**：通过面积图 (Area Chart) 展示最近7天的资金流向波动。
+- [x] **收支构成分析**：通过饼图 (Pie Chart) 自动分析各业务类型的营收占比。
+- [x] **图表优化**：图表交互体验优化，移除干扰视觉的边框。
+
+### 5. 系统安全与架构 (Security & Architecture)
+- [x] **JWT 身份认证**：采用 JSON Web Token 实现无状态安全登录，支持登录过期自动拦截。
+- [x] **Bcrypt 密码加密**：所有用户密码均经过高强度哈希加密存储，杜绝明文泄露风险。
+- [x] **数据库自动备份**：后台服务 (`server/backup.js`) 内置定时任务，每日凌晨自动备份 `financial.db`。
+- [x] **系统设置**：管理员可自定义系统名称与页面标题。
+
+### 6. 移动端深度适配 (Mobile Optimization) 🆕
+- [x] **卡片式布局**：订单与客户列表在手机端自动切换为易读的卡片视图。
+- [x] **触控优化**：主要操作按钮（添加、刷新、菜单）增大触控区域，适应单手操作。
+- [x] **数据强同步按钮**：移动端增加手动数据刷新按钮，应对弱网环境。
+
+---
+
+## 🛠️ 技术任务完成详情 (Please refer to git log for details)
+
+### 后端 (Backend - Node.js/SQLite)
+- [x] 完成数据库表结构设计 (`transactions`, `customers`, `users`, `categories`, `audit_logs`).
+- [x] 实现事务性更新逻辑：在修改/删除订单时，原子性地更新客户余额。
+- [x] 修复 `package-lock.json` 版本冲突与依赖安装问题。
+- [x] 编写数据库迁移脚本 (`add_role_column.js`) 自动修复旧版数据库结构。
+
+### 前端 (Frontend - React/Vite)
+- [x] 使用 Tailwind CSS 实现全站响应式布局。
+- [x] 封装 `fetchWithAuth` 统一处理 API 请求与 Token 认证。
+- [x] 解决 Recharts 图表库的样式兼容性问题。
+- [x] 解决 `html2canvas` 截图在移动端的缩放偏移问题。
+
+---
+
+## 📅 部署说明
+- **服务器环境**：Node.js v18+, Nginx (可选反代)
+- **启动服务**：`node server/index.js`
+- **前端构建**：`npm run build`
