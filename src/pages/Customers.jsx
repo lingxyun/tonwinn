@@ -155,13 +155,22 @@ const Customers = () => {
                     {/* Mobile Refresh Button - Temporary Debugging */}
                     <button
                         onClick={async () => {
-                            const res = await fetchWithAuth(`${API_BASE_URL}/api/customers?t=${Date.now()}`);
-                            if (res.ok) {
-                                setCustomers(await res.json());
+                            setLoading(true);
+                            try {
+                                const [custData, txData, catData] = await Promise.all([
+                                    db.select('SELECT * FROM customers ORDER BY created_at DESC'),
+                                    db.select('SELECT * FROM transactions ORDER BY date DESC'),
+                                    db.select('SELECT * FROM categories ORDER BY created_at DESC')
+                                ]);
+                                setCustomers(custData);
+                                setTransactions(txData);
+                                setCategories(catData);
                                 toast.success('数据已强制刷新');
+                            } finally {
+                                setLoading(false);
                             }
                         }}
-                        className="md:hidden p-2 bg-slate-100 text-slate-600 rounded-lg active:bg-slate-200"
+                        className="md:hidden p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg active:bg-slate-200"
                     >
                         <RotateCcw className="w-5 h-5" />
                     </button>

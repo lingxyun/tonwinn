@@ -6,6 +6,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [react()],
   base: mode === 'production' || mode === 'electron' ? './' : '/',
   server: {
+    port: 5177,
     proxy: {
       '/api': {
         target: 'http://localhost:3002',

@@ -7,6 +7,9 @@ import { writeTextFile } from '@tauri-apps/plugin-fs';
 
 const DataContext = createContext();
 
+// --- Constants ---
+const DB_READY_DELAY = 100;
+
 export const useData = () => {
     const context = useContext(DataContext);
     if (!context) {
@@ -240,7 +243,7 @@ export const DataProvider = ({ children }) => {
             }
         } catch (error) {
             console.error('Export failed:', error);
-            toast.error('导出失败');
+            toast.error('导出失败: ' + (error?.message || error || '未知错误'));
         }
     };
 
@@ -283,9 +286,57 @@ export const DataProvider = ({ children }) => {
     const downloadCustomerTemplate = () => {
         const headers = ['ID', '姓名', '电话', '地址', '账户余额', '状态'];
         const exampleRow = ['', '张三', '13800138000', '上海市浦东新区', '500.00', '活跃'];
-        const formatRow = (row) => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(",");
-        const csvContent = [headers, exampleRow].map(formatRow).join("\n");
         downloadCSV(csvContent, '客户导入模板.csv');
+    };
+
+    const importTransactionsFromCSV = async (file) => {
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: async (results) => {
+                const data = results.data;
+                let successCount = 0;
+                let failCount = 0;
+
+                for (const item of data) {
+                    const date = item['日期'];
+                    const customerName = item['客户名称'];
+                    const amount = parseFloat(item['金额'] || 0);
+                    const type = item['类型'] === '收入' ? 'Income' : 'Expense';
+                    const category = item['分类'];
+                    const description = item['备注'];
+                    const txId = item['交易ID'] || `ORD-${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`;
+
+                    if (date && amount) {
+                        try {
+                            // Find customer by name
+                            const customer = customers.find(c => c.name === customerName);
+                            const customerId = customer ? customer.id : null;
+
+                            await db.execute(
+                                'INSERT INTO transactions (id, customerId, amount, type, category, date, description, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                                [txId, customerId, amount, type, category || 'Uncategorized', date, description || '', 'Completed']
+                            );
+                            successCount++;
+                        } catch (err) {
+                            console.error('Transaction import failed for:', item, err);
+                            failCount++;
+                        }
+                    }
+                }
+
+                const updatedTxs = await db.select('SELECT * FROM transactions ORDER BY date DESC');
+                setTransactions(updatedTxs);
+
+                if (successCount > 0) {
+                    toast.success(`成功导入 ${successCount} 条交易记录`, {
+                        description: failCount > 0 ? `失败 ${failCount} 条` : undefined
+                    });
+                } else if (failCount > 0) {
+                    toast.error('导入失败，请检查文件格式');
+                }
+            }
+        });
     };
 
     const importCustomersFromCSV = async (file) => {
@@ -301,33 +352,26 @@ export const DataProvider = ({ children }) => {
                     const name = item['姓名'];
                     const phone = item['电话'];
                     const address = item['地址'];
-                    const balance = item['账户余额'];
-                    const status = item['状态'];
+                    const balance = parseFloat(item['账户余额'] || 0);
+                    const statusText = item['状态'];
 
                     if (name && phone) {
                         try {
-                            const res = await fetchWithAuth(`${API_BASE_URL}/api/customers`, {
-                                method: 'POST',
-                                body: JSON.stringify({
-                                    name,
-                                    phone,
-                                    address: address || '',
-                                    email: '',
-                                    balance: parseFloat(balance || 0),
-                                    status: status === '活跃' ? 'Active' : 'Inactive'
-                                })
-                            });
-                            if (res.ok) successCount++;
-                            else failCount++;
-                        } catch {
+                            await db.execute(
+                                'INSERT INTO customers (name, phone, address, email, balance, status) VALUES (?, ?, ?, ?, ?, ?)',
+                                [name, phone, address || '', '', balance, statusText === '活跃' ? 'Active' : 'Inactive']
+                            );
+                            successCount++;
+                        } catch (err) {
+                            console.error('Customer import failed for:', item, err);
                             failCount++;
                         }
                     }
                 }
 
-                // Refresh data
-                const custRes = await fetch(`${API_BASE_URL}/api/customers`);
-                if (custRes.ok) setCustomers(await custRes.json());
+                // Refresh data from local DB
+                const updatedCusts = await db.select('SELECT * FROM customers ORDER BY created_at DESC');
+                setCustomers(updatedCusts);
 
                 if (successCount > 0) {
                     toast.success(`成功导入 ${successCount} 个客户`, {
@@ -343,7 +387,8 @@ export const DataProvider = ({ children }) => {
     // --- Actions: System ---
     const importData = async (jsonData) => {
         try {
-            const data = JSON.parse(jsonData);
+            console.log('Starting data import...');
+            const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
 
             if (!data.customers || !data.transactions) {
                 toast.error('无效的备份文件格式');
@@ -355,6 +400,7 @@ export const DataProvider = ({ children }) => {
             await db.execute('DELETE FROM customers');
 
             // 2. Insert Customers
+            console.log(`Importing ${data.customers.length} customers...`);
             for (const cust of data.customers) {
                 await db.execute(
                     'INSERT INTO customers (id, name, email, phone, address, balance, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
@@ -363,6 +409,7 @@ export const DataProvider = ({ children }) => {
             }
 
             // 3. Insert Transactions
+            console.log(`Importing ${data.transactions.length} transactions...`);
             for (const tx of data.transactions) {
                 await db.execute(
                     'INSERT INTO transactions (id, customerId, amount, type, category, date, description, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -370,7 +417,7 @@ export const DataProvider = ({ children }) => {
                 );
             }
 
-            // 4. Refresh
+            // 4. Refresh State
             const [custs, txs] = await Promise.all([
                 db.select('SELECT * FROM customers ORDER BY created_at DESC'),
                 db.select('SELECT * FROM transactions ORDER BY date DESC')
@@ -379,41 +426,144 @@ export const DataProvider = ({ children }) => {
             setTransactions(txs);
 
             toast.success('数据恢复成功');
+            console.log('Data import completed successfully');
         } catch (error) {
             console.error('Import error:', error);
-            toast.error('导入失败');
+            toast.error('导入失败: ' + error.message);
         }
     };
 
     // --- Stats ---
     const getStats = () => {
-        const currentYear = new Date().getFullYear();
-        const lastYear = currentYear - 1;
+        try {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth() + 1; // 1-12
 
-        const getRevenueForYear = (year) => {
-            return transactions
-                .filter(t => t.type === 'Income' && t.status === 'Completed' && new Date(t.date).getFullYear() === year)
-                .reduce((acc, curr) => acc + curr.amount, 0);
-        };
+            let lastMonth = currentMonth - 1;
+            let lastMonthYear = currentYear;
+            if (lastMonth === 0) {
+                lastMonth = 12;
+                lastMonthYear = currentYear - 1;
+            }
 
-        const thisYearRevenue = getRevenueForYear(currentYear);
-        const lastYearRevenue = getRevenueForYear(lastYear);
+            const safeTransactions = transactions || [];
 
-        let growthRate = 0;
-        if (lastYearRevenue > 0) {
-            growthRate = ((thisYearRevenue - lastYearRevenue) / lastYearRevenue) * 100;
-        } else if (thisYearRevenue > 0) {
-            growthRate = 100;
+            // Helper to parse date consistently
+            const parseDateParts = (dateStr) => {
+                if (!dateStr) return null;
+                if (dateStr instanceof Date) {
+                    return {
+                        year: dateStr.getFullYear(),
+                        month: dateStr.getMonth() + 1,
+                        day: dateStr.getDate()
+                    };
+                }
+                const separator = ['-', '/', '.'].find(s => dateStr.includes(s));
+                if (!separator) return null;
+                const parts = dateStr.split(separator);
+                return {
+                    year: parseInt(parts[0]),
+                    month: parseInt(parts[1]),
+                    day: parseInt(parts[2])
+                };
+            };
+
+            // --- Yearly Revenue Calculation ---
+            const getRevenueForYear = (year) => {
+                return safeTransactions
+                    .filter(t => {
+                        const parts = parseDateParts(t.date);
+                        return parts && t.type === 'Income' && t.status === 'Completed' && parts.year === year;
+                    })
+                    .reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+            };
+
+            const thisYearRevenue = getRevenueForYear(currentYear);
+            const lastYearRevenue = getRevenueForYear(currentYear - 1);
+
+            let yearGrowthRate = 0;
+            if (lastYearRevenue > 0) {
+                yearGrowthRate = ((thisYearRevenue - lastYearRevenue) / lastYearRevenue) * 100;
+            } else if (thisYearRevenue > 0) {
+                yearGrowthRate = 100;
+            }
+
+            // --- MoM Calculations ---
+            const getMonthlyMetrics = (year, month) => {
+                const monthlyTxs = safeTransactions.filter(t => {
+                    const parts = parseDateParts(t.date);
+                    return parts && parts.year === year && parts.month === month;
+                });
+
+                const income = monthlyTxs
+                    .filter(t => t.type === 'Income' && t.status === 'Completed')
+                    .reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+
+                const expense = monthlyTxs
+                    .filter(t => t.type === 'Expense' && t.status === 'Completed')
+                    .reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+
+                const profit = income - expense;
+                const orderCount = monthlyTxs.length;
+                const activeCustomerCount = new Set(monthlyTxs.map(t => t.customerId).filter(Boolean)).size;
+
+                return { profit, orderCount, activeCustomerCount, year, month };
+            };
+
+            const thisMonthMetrics = getMonthlyMetrics(currentYear, currentMonth);
+            const lastMonthMetrics = getMonthlyMetrics(lastMonthYear, lastMonth);
+
+            console.log('Stats Debug:', {
+                current: { year: currentYear, month: currentMonth, count: thisMonthMetrics.orderCount, profit: thisMonthMetrics.profit },
+                previous: { year: lastMonthYear, month: lastMonth, count: lastMonthMetrics.orderCount, profit: lastMonthMetrics.profit },
+                totalTxs: safeTransactions.length
+            });
+
+            const calcGrowth = (curr, prev, isPercentage = true) => {
+                if (isPercentage) {
+                    if (prev === 0) {
+                        return curr === 0 ? "+0%" : (curr > 0 ? "+100%" : "-100%");
+                    }
+                    const rate = ((curr - prev) / Math.abs(prev)) * 100;
+                    return (rate >= 0 ? "+" : "") + rate.toFixed(1) + "%";
+                } else {
+                    const diff = curr - prev;
+                    return (diff >= 0 ? "+" : "") + diff;
+                }
+            };
+
+            const results = {
+                totalRevenue: thisYearRevenue,
+                totalOrders: safeTransactions.length,
+                activeCustomers: (customers || []).filter(c => c.status === 'Active').length,
+                growth: (yearGrowthRate >= 0 ? "+" : "") + yearGrowthRate.toFixed(1) + "%",
+                profitMoM: calcGrowth(thisMonthMetrics.profit, lastMonthMetrics.profit, true),
+                profitTrend: thisMonthMetrics.profit >= lastMonthMetrics.profit ? 'up' : 'down',
+                orderMoM: calcGrowth(thisMonthMetrics.orderCount, lastMonthMetrics.orderCount, true),
+                orderTrend: thisMonthMetrics.orderCount >= lastMonthMetrics.orderCount ? 'up' : 'down',
+                customerMoM: calcGrowth(thisMonthMetrics.activeCustomerCount, lastMonthMetrics.activeCustomerCount, false),
+                customerTrend: thisMonthMetrics.activeCustomerCount >= lastMonthMetrics.activeCustomerCount ? 'up' : 'down'
+            };
+
+            // Console log for help with user troubleshooting
+            console.log('Dashboard Stats Calculated:', results);
+            return results;
+        } catch (err) {
+            console.error('Error calculating stats:', err);
+            return {
+                totalRevenue: 0,
+                totalOrders: 0,
+                activeCustomers: 0,
+                growth: "+0%",
+                profitMoM: "+0%",
+                profitTrend: 'up',
+                orderMoM: "+0%",
+                orderTrend: 'up',
+                customerMoM: "+0",
+                customerTrend: 'up'
+            };
         }
-
-        const growth = (growthRate > 0 ? "+" : "") + growthRate.toFixed(1) + "%";
-
-        return {
-            totalRevenue: thisYearRevenue,
-            totalOrders: transactions.length,
-            activeCustomers: customers.filter(c => c.status === 'Active').length,
-            growth
-        };
     };
 
     const resetData = async () => {
@@ -452,6 +602,7 @@ export const DataProvider = ({ children }) => {
             exportTransactionDetailsToCSV,
             downloadCustomerTemplate,
             importCustomersFromCSV,
+            importTransactionsFromCSV,
             stats: getStats()
         }}>
             {children}
