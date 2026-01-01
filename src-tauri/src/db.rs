@@ -68,9 +68,9 @@ pub fn get_migrations() -> Vec<Migration> {
                 -- Seed default admin if not exists
                 INSERT OR IGNORE INTO users (username, password, role) VALUES ('admin', '$2b$10$1MuHZBw4IPrbmU7AzqtE8.N8X2uIB.GkJGsUqRl5tcrjzDXa9uFmq', 'Admin');
                 
-                INSERT OR IGNORE INTO settings (key, value) VALUES ('system_name', '财务通');
-                INSERT OR IGNORE INTO settings (key, value) VALUES ('system_subtitle', '企业财务管理系统');
-                INSERT OR IGNORE INTO settings (key, value) VALUES ('page_title', '财务通 - 专业财务管理');
+                INSERT OR IGNORE INTO settings (key, value) VALUES ('system_name', '鱼跃CRM');
+                INSERT OR IGNORE INTO settings (key, value) VALUES ('system_subtitle', '鱼跃客户关系管理系统');
+                INSERT OR IGNORE INTO settings (key, value) VALUES ('page_title', '鱼跃CRM - 专业管理系统');
 
                 INSERT OR IGNORE INTO categories (name, type) VALUES ('产品销售', 'Income');
                 INSERT OR IGNORE INTO categories (name, type) VALUES ('服务咨询', 'Income');

@@ -11,6 +11,8 @@ import AIInsightsCard from '../components/dashboard/AIInsightsCard';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { useData } from '../context/DataContext';
+import { save } from '@tauri-apps/plugin-dialog';
+import { writeTextFile } from '@tauri-apps/plugin-fs';
 
 const CountUp = ({ value, prefix = "", suffix = "" }) => {
     const [displayValue, setDisplayValue] = useState(0);
@@ -134,22 +136,30 @@ const Dashboard = () => {
         return data;
     }, [localTransactions]);
 
-    const handleExport = () => {
+    const handleExport = async () => {
         try {
-            const backup = {
-                version: "1.0",
-                timestamp: new Date().toISOString(),
-                customers: customers || [],
-                transactions: localTransactions || []
-            };
-            const jsonContent = JSON.stringify(backup, null, 2);
-            const blob = new Blob([jsonContent], { type: 'application/json' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `financial_backup_${new Date().toISOString().split('T')[0]}.json`;
-            link.click();
-            toast.success('数据备份已导出');
+            const fileName = `financial_backup_${new Date().toISOString().split('T')[0]}.json`;
+            const filePath = await save({
+                filters: [{
+                    name: 'JSON备份文件',
+                    extensions: ['json']
+                }],
+                defaultPath: fileName
+            });
+
+            if (filePath) {
+                const backup = {
+                    version: "1.0",
+                    timestamp: new Date().toISOString(),
+                    customers: customers || [],
+                    transactions: localTransactions || []
+                };
+                const jsonContent = JSON.stringify(backup, null, 2);
+                await writeTextFile(filePath, jsonContent);
+                toast.success('数据备份已导出');
+            }
         } catch (error) {
+            console.error('Backup export failed:', error);
             toast.error('导出失败');
         }
     };

@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
 import * as db from '../utils/tauriDb';
+import { save } from '@tauri-apps/plugin-dialog';
+import { writeTextFile } from '@tauri-apps/plugin-fs';
 
 const DataContext = createContext();
 
@@ -19,10 +21,11 @@ export const DataProvider = ({ children }) => {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Initial Load
+    // Initial Load with Retry
     useEffect(() => {
-        const fetchData = async () => {
+        const fetchData = async (retries = 3) => {
             try {
+                // Wait for the DB to be ready
                 const [custData, txData, catData] = await Promise.all([
                     db.select('SELECT * FROM customers ORDER BY created_at DESC'),
                     db.select('SELECT * FROM transactions ORDER BY date DESC'),
@@ -32,11 +35,16 @@ export const DataProvider = ({ children }) => {
                 setCustomers(custData);
                 setTransactions(txData);
                 setCategories(catData);
-            } catch (error) {
-                console.error('Failed to fetching data:', error);
-                toast.error('无法连接到本地数据库');
-            } finally {
                 setLoading(false);
+            } catch (error) {
+                console.error(`Fetch attempt failed (${retries} retries left):`, error);
+                if (retries > 0) {
+                    // Wait 500ms before retrying
+                    setTimeout(() => fetchData(retries - 1), 500);
+                } else {
+                    toast.error('初始化数据库失败，请尝试重启软件');
+                    setLoading(false);
+                }
             }
         };
         fetchData();
@@ -214,17 +222,26 @@ export const DataProvider = ({ children }) => {
     };
 
     // --- Actions: CSV Export/Import ---
-    const downloadCSV = (csvContent, fileName) => {
-        const BOM = '\uFEFF'; // Add BOM for Excel Chinese support
-        const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', fileName);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    const downloadCSV = async (csvContent, fileName) => {
+        try {
+            // Pick a path using native save dialog
+            const filePath = await save({
+                filters: [{
+                    name: 'CSV文件',
+                    extensions: ['csv']
+                }],
+                defaultPath: fileName
+            });
+
+            if (filePath) {
+                const BOM = '\uFEFF'; // Add BOM for Excel Chinese support
+                await writeTextFile(filePath, BOM + csvContent);
+                toast.success('文件已保存');
+            }
+        } catch (error) {
+            console.error('Export failed:', error);
+            toast.error('导出失败');
+        }
     };
 
     const exportCustomersToCSV = () => {

@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "financial-system",
-  "version": "0.1.0",
+  "productName": "鱼跃CRM",
+  "version": "0.1.2",
   "identifier": "com.tonwin.financial",
   "build": {
     "frontendDist": "../dist",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "财务通",
+        "title": "鱼跃CRM",
         "width": 800,
         "height": 600,
         "resizable": true,
@@ -25,7 +25,9 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": [
+      "nsis"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

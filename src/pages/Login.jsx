@@ -28,10 +28,14 @@ const Login = () => {
         <div className="min-h-screen grid place-items-center bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
             <div className="w-full max-w-md p-8">
                 <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-blue-500/20 mb-4">
-                        <span className="text-2xl font-bold text-white">
-                            {settings?.system_name ? settings.system_name.substring(0, 2).toUpperCase() : 'FS'}
-                        </span>
+                    <div className="w-16 h-16 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-blue-500/20 mb-4 overflow-hidden">
+                        {settings?.app_icon ? (
+                            <img src={settings.app_icon} alt="Logo" className="w-full h-full object-cover" />
+                        ) : (
+                            <span className="text-2xl font-bold text-white">
+                                {settings?.system_name ? settings.system_name.substring(0, 2).toUpperCase() : 'FS'}
+                            </span>
+                        )}
                     </div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
                         欢迎使用 {settings?.system_name || '财务管理系统'}

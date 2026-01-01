@@ -14,6 +14,8 @@ pub fn run() {
         .level(log::LevelFilter::Info)
         .build(),
     )
+    .plugin(tauri_plugin_dialog::init())
+    .plugin(tauri_plugin_fs::init())
     .setup(|_app| {
       Ok(())
     })

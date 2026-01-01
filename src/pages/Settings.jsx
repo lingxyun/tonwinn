@@ -1,14 +1,15 @@
-
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '../context/SettingsContext';
-import { Save, Settings as SettingsIcon } from 'lucide-react';
+import { Save, Settings as SettingsIcon, Upload, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Settings = () => {
     const { settings, updateSettings } = useSettings();
     const [formData, setFormData] = useState({
         system_name: '',
         system_subtitle: '',
-        page_title: ''
+        page_title: '',
+        app_icon: ''
     });
     const [isSaving, setIsSaving] = useState(false);
 
@@ -17,7 +18,8 @@ const Settings = () => {
             setFormData({
                 system_name: settings.system_name || '',
                 system_subtitle: settings.system_subtitle || '',
-                page_title: settings.page_title || ''
+                page_title: settings.page_title || '',
+                app_icon: settings.app_icon || ''
             });
         }
     }, [settings]);
@@ -25,6 +27,21 @@ const Settings = () => {
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleIconUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.size > 1024 * 1024) {
+                toast.error('图片过大，请上传 1MB 以内的图片');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                setFormData(prev => ({ ...prev, app_icon: event.target.result }));
+            };
+            reader.readAsDataURL(file);
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -50,6 +67,37 @@ const Settings = () => {
 
             <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
                 <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+                    <div className="space-y-4">
+                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            应用图标
+                        </label>
+                        <div className="flex items-center gap-4">
+                            <div className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center bg-slate-50 dark:bg-slate-950 overflow-hidden">
+                                {formData.app_icon ? (
+                                    <img src={formData.app_icon} alt="App Icon" className="w-full h-full object-cover" />
+                                ) : (
+                                    <Upload className="w-6 h-6 text-slate-300" />
+                                )}
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <label className="cursor-pointer px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors inline-block text-center">
+                                    <input type="file" accept="image/*" onChange={handleIconUpload} className="hidden" />
+                                    更换图标
+                                </label>
+                                {formData.app_icon && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData(prev => ({ ...prev, app_icon: '' }))}
+                                        className="text-xs text-red-500 hover:text-red-600 flex items-center gap-1 justify-center"
+                                    >
+                                        <X className="w-3 h-3" /> 移除图标
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                        <p className="text-xs text-slate-500">建议使用 128x128 像素的 PNG 图片。该图标将显示在侧边栏和窗口标题栏。</p>
+                    </div>
+
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                             系统名称

@@ -49,32 +49,45 @@ const Sidebar = ({ isDarkMode, toggleTheme, isCollapsed, setIsCollapsed }) => {
             animate={{ width: isCollapsed ? 80 : 256 }}
             className="h-screen glass fixed left-0 top-0 z-40 flex flex-col transition-all duration-300 ease-in-out"
         >
-            <div className="p-6 flex items-center justify-between overflow-hidden border-b border-slate-100 dark:border-white/5">
+            <div className={`p-6 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} overflow-hidden border-b border-slate-100 dark:border-white/5`}>
+                {settings?.app_icon && (
+                    <img src={settings.app_icon} alt="Logo" className="w-8 h-8 rounded-lg object-cover shadow-sm shrink-0 bg-white" />
+                )}
                 <AnimatePresence mode="wait">
                     {!isCollapsed && (
                         <motion.div
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -20 }}
-                            className="whitespace-nowrap"
+                            className="whitespace-nowrap flex-1 overflow-hidden"
                         >
-                            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-500 to-teal-400 bg-clip-text text-transparent text-glow">
+                            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-500 to-teal-400 bg-clip-text text-transparent text-glow truncate">
                                 {settings?.system_name || '财务通'}
                             </h1>
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">
                                 {settings?.system_subtitle || '企业财务管理系统'}
                             </p>
                         </motion.div>
                     )}
                 </AnimatePresence>
 
+                {!isCollapsed && (
+                    <button
+                        onClick={() => setIsCollapsed(!isCollapsed)}
+                        className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-primary transition-colors"
+                    >
+                        <ChevronLeft size={16} />
+                    </button>
+                )}
+            </div>
+            {isCollapsed && (
                 <button
                     onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-primary transition-colors"
+                    className="absolute -right-3 top-20 p-1.5 rounded-full bg-white dark:bg-slate-800 text-slate-500 hover:text-primary transition-all border border-slate-200 dark:border-slate-700 shadow-sm z-50"
                 >
-                    {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+                    <ChevronRight size={12} />
                 </button>
-            </div>
+            )}
 
             <nav className="flex-1 px-4 space-y-2 py-6 overflow-y-auto custom-scrollbar">
                 {filteredNavItems.map((item) => {
