@@ -5,6 +5,8 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { toast } from 'sonner';
 import { useSettings } from '../../context/SettingsContext';
+import { save } from '@tauri-apps/plugin-dialog';
+import { writeFile } from '@tauri-apps/plugin-fs';
 
 const InvoiceModal = ({ isOpen, onClose, transaction, customer }) => {
     const invoiceRef = useRef(null);
@@ -18,27 +20,47 @@ const InvoiceModal = ({ isOpen, onClose, transaction, customer }) => {
         try {
             const element = invoiceRef.current;
             const canvas = await html2canvas(element, {
-                scale: 3, // Higher scale for ultra-sharp quality
+                scale: 3,
                 useCORS: true,
                 logging: false,
                 backgroundColor: '#ffffff'
             });
 
-            if (type === 'pdf') {
-                const imgData = canvas.toDataURL('image/png');
-                const pdf = new jsPDF('p', 'mm', 'a4');
-                const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-                pdf.save(`收据_${transaction.id}.pdf`);
-                toast.success('PDF 电子收据已下载');
-            } else {
-                const imgData = canvas.toDataURL('image/png');
-                const link = document.createElement('a');
-                link.href = imgData;
-                link.download = `收据_${transaction.id}.png`;
-                link.click();
-                toast.success('图片电子收据已下载');
+            const fileName = type === 'pdf'
+                ? `收据_${transaction.id}.pdf`
+                : `收据_${transaction.id}.png`;
+
+            const filePath = await save({
+                filters: [{
+                    name: type === 'pdf' ? 'PDF文件' : '图片文件',
+                    extensions: [type]
+                }],
+                defaultPath: fileName
+            });
+
+            if (filePath) {
+                if (type === 'pdf') {
+                    const pdf = new jsPDF('p', 'mm', 'a4');
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                    const imgData = canvas.toDataURL('image/png');
+                    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+
+                    const pdfArrayBuffer = pdf.output('arraybuffer');
+                    await writeFile(filePath, new Uint8Array(pdfArrayBuffer));
+                    toast.success('PDF 电子收据已保存');
+                } else {
+                    const imgData = canvas.toDataURL('image/png');
+                    // Convert base64 imgData to Uint8Array
+                    const base64Data = imgData.split(',')[1];
+                    const binaryData = atob(base64Data);
+                    const uint8Array = new Uint8Array(binaryData.length);
+                    for (let i = 0; i < binaryData.length; i++) {
+                        uint8Array[i] = binaryData.charCodeAt(i);
+                    }
+                    await writeFile(filePath, uint8Array);
+                    toast.success('图片电子收据已保存');
+                }
             }
         } catch (error) {
             console.error('Generation failed:', error);
