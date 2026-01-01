@@ -355,6 +355,76 @@ app.post('/api/reset', authenticateToken, (req, res) => {
     }
 });
 
+// Import/Restore Data
+app.post('/api/import', authenticateToken, (req, res) => {
+    const { customers, transactions } = req.body;
+
+    if (!Array.isArray(customers) || !Array.isArray(transactions)) {
+        return res.status(400).json({ error: '无效的数据格式：需要包含 customers 和 transactions 数组' });
+    }
+
+    try {
+        const importTx = db.transaction(() => {
+            // 1. Clear existing data
+            db.prepare('DELETE FROM transactions').run();
+            db.prepare('DELETE FROM customers').run();
+            // Optional: db.prepare("DELETE FROM sqlite_sequence WHERE name='customers'").run(); 
+            // We don't strictly need to reset sequence if we are inserting explicit IDs, but it's cleaner.
+
+            // 2. Insert Customers
+            const insertCustomer = db.prepare(`
+                INSERT INTO customers (id, name, email, phone, address, balance, status, created_at)
+                VALUES (@id, @name, @email, @phone, @address, @balance, @status, @created_at)
+            `);
+
+            for (const cust of customers) {
+                // Handle potential missing fields or defaults
+                insertCustomer.run({
+                    id: cust.id,
+                    name: cust.name,
+                    email: cust.email || '',
+                    phone: cust.phone || '',
+                    address: cust.address || '',
+                    balance: cust.balance || 0,
+                    status: cust.status || 'Active',
+                    created_at: cust.created_at || new Date().toISOString()
+                });
+            }
+
+            // 3. Insert Transactions
+            const insertTransaction = db.prepare(`
+                INSERT INTO transactions (id, customerId, amount, type, category, date, description, status, created_at)
+                VALUES (@id, @customerId, @amount, @type, @category, @date, @description, @status, @created_at)
+            `);
+
+            for (const tx of transactions) {
+                insertTransaction.run({
+                    id: tx.id,
+                    customerId: tx.customerId,
+                    amount: tx.amount,
+                    type: tx.type,
+                    category: tx.category || 'Uncategorized',
+                    date: tx.date,
+                    description: tx.description || '',
+                    status: tx.status || 'Completed',
+                    created_at: tx.created_at || new Date().toISOString()
+                });
+            }
+        });
+
+        importTx();
+
+        // Audit Log
+        db.prepare('INSERT INTO audit_logs (user_id, action, details) VALUES (?, ?, ?)')
+            .run(req.user.id, 'IMPORT_DATA', `Restored ${customers.length} customers and ${transactions.length} transactions`);
+
+        res.json({ message: '数据导入成功' });
+    } catch (error) {
+        console.error('Import failed:', error);
+        res.status(500).json({ error: '导入失败: ' + error.message });
+    }
+});
+
 // --- Serve Frontend Static Files (Production) ---
 const distPath = path.join(__dirname, '../dist');
 app.use(express.static(distPath));

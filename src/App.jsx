@@ -59,7 +59,7 @@ function App() {
                 <Route path="settings" element={<Settings />} />
               </Route>
             </Routes>
-            <Toaster position="top-right" richColors />
+            <Toaster position="top-center" richColors />
             <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
           </DataProvider>
         </SettingsProvider>

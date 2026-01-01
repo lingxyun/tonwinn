@@ -354,18 +354,42 @@ export const DataProvider = ({ children }) => {
     };
 
     // --- Actions: System ---
-    const importData = (jsonData) => {
+    const importData = async (jsonData) => {
         try {
             const data = JSON.parse(jsonData);
-            if (data.customers && Array.isArray(data.customers)) {
-                setCustomers(data.customers);
+
+            if (!data.customers || !Array.isArray(data.customers) || !data.transactions || !Array.isArray(data.transactions)) {
+                toast.error('无效的备份文件格式');
+                return;
             }
-            if (data.transactions && Array.isArray(data.transactions)) {
-                setTransactions(data.transactions);
+
+            const res = await fetchWithAuth(`${API_BASE_URL}/api/import`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    customers: data.customers,
+                    transactions: data.transactions
+                })
+            });
+
+            if (res.ok) {
+                // Re-fetch data from server to ensure synchronization
+                const [custRes, txRes] = await Promise.all([
+                    fetchWithAuth(`${API_BASE_URL}/api/customers?t=${Date.now()}`),
+                    fetchWithAuth(`${API_BASE_URL}/api/transactions?t=${Date.now()}`)
+                ]);
+
+                if (custRes.ok && txRes.ok) {
+                    setCustomers(await custRes.json());
+                    setTransactions(await txRes.json());
+                    toast.success('数据恢复成功', { description: '系统数据已还原至备份状态' });
+                }
+            } else {
+                const err = await res.json();
+                toast.error('恢复失败', { description: err.error || '服务器拒绝了请求' });
             }
-            toast.success('数据恢复成功');
         } catch (error) {
-            toast.error('数据格式错误，无法导入');
+            console.error('Import error:', error);
+            toast.error('导入失败', { description: '文件解析错误或网络异常' });
         }
     };
 
