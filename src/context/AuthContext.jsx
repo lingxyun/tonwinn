@@ -1,6 +1,6 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { API_BASE_URL } from '../config';
+import { invoke } from '@tauri-apps/api/core';
+import * as db from '../utils/tauriDb';
 import { toast } from 'sonner';
 
 const AuthContext = createContext();
@@ -21,36 +21,38 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (username, password) => {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+            // 1. Find user in local DB
+            const results = await db.select("SELECT * FROM users WHERE username = ?", [username]);
+
+            if (results.length === 0) {
+                toast.error('登录失败', { description: '用户不存在' });
+                return false;
+            }
+
+            const userData = results[0];
+
+            // 2. Verify password via Rust command
+            const isValid = await invoke('verify_password', {
+                password,
+                hash: userData.password
             });
 
-            if (res.ok) {
-                const data = await res.json();
-                const { token, ...userData } = data;
-                setUser(userData);
-                localStorage.setItem('user', JSON.stringify(userData));
-                if (token) {
-                    localStorage.setItem('token', token);
-                    // Trigger a storage event or just rely on state if they share the same context
-                    // For now, reload or manual state sync is needed if they are separate
-                }
-                toast.success('登录成功', { description: `欢迎回来, ${data.username}` });
+            if (isValid) {
+                const { password: _, ...userWithoutPass } = userData;
+                setUser(userWithoutPass);
+                localStorage.setItem('user', JSON.stringify(userWithoutPass));
+                // Local app doesn't strictly need JWT token, but we can set a dummy one if needed
+                localStorage.setItem('token', 'local-session-token');
+
+                toast.success('登录成功', { description: `欢迎回来, ${userData.username}` });
                 return true;
             } else {
-                const err = await res.json();
-                console.group('Auth Failure');
-                console.error('Status:', res.status);
-                console.error('Error Details:', err);
-                console.groupEnd();
-                toast.error('登录失败', { description: err.error || '用户名或密码错误' });
+                toast.error('登录失败', { description: '密码错误' });
                 return false;
             }
         } catch (error) {
             console.error('Login error:', error);
-            toast.error('服务器连接失败');
+            toast.error('系统异常', { description: error.message });
             return false;
         }
     };

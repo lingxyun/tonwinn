@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { customers as initialCustomers, transactions as initialTransactions } from '../utils/mockData';
 import { toast } from 'sonner';
-import { API_BASE_URL } from '../config';
 import Papa from 'papaparse';
+import * as db from '../utils/tauriDb';
 
 const DataContext = createContext();
 
@@ -15,96 +14,62 @@ export const useData = () => {
 };
 
 export const DataProvider = ({ children }) => {
-    // --- Customers State ---
-    // --- State ---
     const [customers, setCustomers] = useState([]);
     const [transactions, setTransactions] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || null);
-    const [token, setToken] = useState(localStorage.getItem('token') || null);
 
-    // Helper for fetch with token
-    const fetchWithAuth = async (url, options = {}) => {
-        const headers = {
-            'Content-Type': 'application/json',
-            ...options.headers,
-        };
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-        }
-        return fetch(url, { ...options, headers });
-    };
-
-    // --- Initial Load ---
+    // Initial Load
     useEffect(() => {
         const fetchData = async () => {
-            if (!token) {
-                setLoading(false);
-                return;
-            }
             try {
-                // Initial load with cache busting
-                const [custRes, txRes, catRes] = await Promise.all([
-                    fetchWithAuth(`${API_BASE_URL}/api/customers?t=${Date.now()}`),
-                    fetchWithAuth(`${API_BASE_URL}/api/transactions?t=${Date.now()}`),
-                    fetch(`${API_BASE_URL}/api/categories`)
+                const [custData, txData, catData] = await Promise.all([
+                    db.select('SELECT * FROM customers ORDER BY created_at DESC'),
+                    db.select('SELECT * FROM transactions ORDER BY date DESC'),
+                    db.select('SELECT * FROM categories ORDER BY created_at DESC')
                 ]);
 
-                if (custRes.ok && txRes.ok && catRes.ok) {
-                    const custData = await custRes.json();
-                    const txData = await txRes.json();
-                    const catData = await catRes.json();
-                    setCustomers(custData);
-                    setTransactions(txData);
-                    setCategories(catData);
-                }
+                setCustomers(custData);
+                setTransactions(txData);
+                setCategories(catData);
             } catch (error) {
                 console.error('Failed to fetching data:', error);
-                toast.error('无法连接到服务器，请确保后台已启动');
+                toast.error('无法连接到本地数据库');
             } finally {
                 setLoading(false);
             }
         };
         fetchData();
-    }, [token]); // Re-fetch when token changes
+    }, []);
 
     // --- Persistence ---
 
 
     // --- Actions: Customers ---
-    const addCustomer = async (customerData) => {
+    const addCustomer = async (data) => {
         try {
-            const res = await fetchWithAuth(`${API_BASE_URL}/api/customers`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    ...customerData,
-                    balance: parseFloat(customerData.balance || 0)
-                })
-            });
-            if (res.ok) {
-                const newCustomer = await res.json();
-                setCustomers((prev) => [newCustomer, ...prev]);
-                toast.success('客户添加成功');
-            }
+            await db.execute(
+                'INSERT INTO customers (name, email, phone, address, balance, status) VALUES (?, ?, ?, ?, ?, ?)',
+                [data.name, data.email || '', data.phone, data.address || '', data.balance || 0, data.status || 'Active']
+            );
+            const newCust = (await db.select('SELECT * FROM customers ORDER BY id DESC LIMIT 1'))[0];
+            setCustomers((prev) => [newCust, ...prev]);
+            toast.success('客户添加成功');
         } catch (error) {
             toast.error('添加失败');
         }
     };
 
-    const updateCustomer = async (updatedData) => {
+    const updateCustomer = async (data) => {
         try {
-            const res = await fetchWithAuth(`${API_BASE_URL}/api/customers/${updatedData.id}`, {
-                method: 'PUT',
-                body: JSON.stringify(updatedData)
-            });
-            if (res.ok) {
-                const updated = await res.json();
-                setCustomers((prev) =>
-                    prev.map((c) => (c.id === updated.id ? updated : c))
-                );
-                toast.success('客户信息已更新');
-            }
+            await db.execute(
+                'UPDATE customers SET name = ?, email = ?, phone = ?, address = ?, balance = ?, status = ? WHERE id = ?',
+                [data.name, data.email, data.phone, data.address, data.balance, data.status, data.id]
+            );
+            setCustomers((prev) =>
+                prev.map((c) => (c.id === data.id ? data : c))
+            );
+            toast.success('客户信息已更新');
         } catch (error) {
             toast.error('更新失败');
         }
@@ -112,45 +77,34 @@ export const DataProvider = ({ children }) => {
 
     const deleteCustomer = async (id) => {
         try {
-            const res = await fetchWithAuth(`${API_BASE_URL}/api/customers/${id}`, { method: 'DELETE' });
-            if (res.ok) {
-                setCustomers((prev) => prev.filter((c) => c.id !== id));
-                toast.success('客户已删除');
-            } else {
-                const err = await res.json();
-                toast.error('删除失败', { description: err.error || '服务器拒绝了请求，请检查权限' });
-            }
+            // Transaction to delete customer and their transactions
+            await db.execute('DELETE FROM transactions WHERE customerId = ?', [id]);
+            await db.execute('DELETE FROM customers WHERE id = ?', [id]);
+            setCustomers((prev) => prev.filter((c) => c.id !== id));
+            setTransactions((prev) => prev.filter((t) => t.customerId !== id));
+            toast.success('客户及相关交易已删除');
         } catch (error) {
-            toast.error('删除失败', { description: '网络连接异常' });
+            toast.error('删除失败');
         }
     };
 
     // --- Actions: Categories ---
-    const addCategory = async (category) => {
+    const addCategory = async (cat) => {
         try {
-            const res = await fetchWithAuth(`${API_BASE_URL}/api/categories`, {
-                method: 'POST',
-                body: JSON.stringify(category)
-            });
-            if (res.ok) {
-                const newCat = await res.json();
-                setCategories((prev) => [newCat, ...prev]);
-                toast.success('类别添加成功');
-            }
+            await db.execute('INSERT INTO categories (name, type) VALUES (?, ?)', [cat.name, cat.type]);
+            const newCat = (await db.select('SELECT * FROM categories ORDER BY id DESC LIMIT 1'))[0];
+            setCategories((prev) => [newCat, ...prev]);
+            toast.success('类别添加成功');
         } catch {
             toast.error('添加失败');
         }
     };
 
-    const updateCategory = async (updatedCat) => {
+    const updateCategory = async (cat) => {
         try {
-            await fetch(`${API_BASE_URL}/api/categories/${updatedCat.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updatedCat)
-            });
+            await db.execute('UPDATE categories SET name = ?, type = ? WHERE id = ?', [cat.name, cat.type, cat.id]);
             setCategories((prev) =>
-                prev.map((c) => (c.id === updatedCat.id ? updatedCat : c))
+                prev.map((c) => (c.id === cat.id ? cat : c))
             );
             toast.success('类别已更新');
         } catch {
@@ -160,7 +114,7 @@ export const DataProvider = ({ children }) => {
 
     const deleteCategory = async (id) => {
         try {
-            await fetch(`${API_BASE_URL}/api/categories/${id}`, { method: 'DELETE' });
+            await db.execute('DELETE FROM categories WHERE id = ?', [id]);
             setCategories((prev) => prev.filter((c) => c.id !== id));
             toast.success('类别已删除');
         } catch {
@@ -171,75 +125,91 @@ export const DataProvider = ({ children }) => {
     // --- Actions: Transactions ---
     const addTransaction = async (txData) => {
         const newTxId = `ORD-${Math.floor(Math.random() * 100000).toString().padStart(6, '0')}`;
-        const payload = {
-            id: newTxId,
-            ...txData,
-            amount: parseFloat(txData.amount || 0)
-        };
-
         try {
-            const res = await fetchWithAuth(`${API_BASE_URL}/api/transactions`, {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            });
+            // 1. Insert transaction
+            await db.execute(
+                'INSERT INTO transactions (id, customerId, amount, type, category, date, description, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [newTxId, txData.customerId, txData.amount, txData.type, txData.category, txData.date, txData.description, txData.status || 'Completed']
+            );
 
-            if (res.ok) {
-                const newTx = await res.json();
-                setTransactions((prev) => [newTx, ...prev]);
-
-                // Refresh customers to get updated balances
-                // Refresh customers to get updated balances
-                const custRes = await fetchWithAuth(`${API_BASE_URL}/api/customers?t=${Date.now()}`);
-                if (custRes.ok) setCustomers(await custRes.json());
-
-                toast.success('交易已记录');
+            // 2. Adjust customer balance
+            if (txData.customerId) {
+                const adjustment = txData.type === 'Income' ? txData.amount : -txData.amount;
+                await db.execute('UPDATE customers SET balance = balance + ? WHERE id = ?', [adjustment, txData.customerId]);
             }
+
+            // 3. Refresh state
+            const [newTx] = await db.select('SELECT * FROM transactions WHERE id = ?', [newTxId]);
+            setTransactions((prev) => [newTx, ...prev]);
+
+            const updatedCustomers = await db.select('SELECT * FROM customers ORDER BY created_at DESC');
+            setCustomers(updatedCustomers);
+
+            toast.success('交易已记录');
         } catch (error) {
+            console.error(error);
             toast.error('交易失败');
         }
     };
 
     const updateTransaction = async (updatedTx) => {
         try {
-            const res = await fetchWithAuth(`${API_BASE_URL}/api/transactions/${updatedTx.id}`, {
-                method: 'PUT',
-                body: JSON.stringify(updatedTx)
-            });
+            const [originalTx] = await db.select('SELECT * FROM transactions WHERE id = ?', [updatedTx.id]);
+            if (!originalTx) return;
 
-            if (res.ok) {
-                setTransactions((prev) =>
-                    prev.map((tx) => (tx.id === updatedTx.id ? { ...tx, ...updatedTx } : tx))
-                );
-                // Refresh customers to get updated balances
-                // Refresh customers to get updated balances
-                const custRes = await fetchWithAuth(`${API_BASE_URL}/api/customers?t=${Date.now()}`);
-                if (custRes.ok) setCustomers(await custRes.json());
-
-                toast.success('交易已更新，余额已同步');
-            } else {
-                toast.error('更新失败');
+            // 1. Revert original balance
+            if (originalTx.customerId) {
+                const revertAmount = originalTx.type === 'Income' ? -originalTx.amount : originalTx.amount;
+                await db.execute('UPDATE customers SET balance = balance + ? WHERE id = ?', [revertAmount, originalTx.customerId]);
             }
-        } catch {
+
+            // 2. Update transaction
+            await db.execute(
+                'UPDATE transactions SET customerId = ?, amount = ?, type = ?, category = ?, date = ?, description = ?, status = ? WHERE id = ?',
+                [updatedTx.customerId, updatedTx.amount, updatedTx.type, updatedTx.category, updatedTx.date, updatedTx.description, updatedTx.status, updatedTx.id]
+            );
+
+            // 3. Apply new balance
+            if (updatedTx.customerId) {
+                const newAdjustment = updatedTx.type === 'Income' ? updatedTx.amount : -updatedTx.amount;
+                await db.execute('UPDATE customers SET balance = balance + ? WHERE id = ?', [newAdjustment, updatedTx.customerId]);
+            }
+
+            // 4. Refresh state
+            setTransactions((prev) =>
+                prev.map((tx) => (tx.id === updatedTx.id ? { ...tx, ...updatedTx } : tx))
+            );
+            const updatedCustomers = await db.select('SELECT * FROM customers ORDER BY created_at DESC');
+            setCustomers(updatedCustomers);
+
+            toast.success('交易已更新，余额已同步');
+        } catch (error) {
             toast.error('更新失败');
         }
     };
 
     const deleteTransaction = async (id) => {
         try {
-            const res = await fetchWithAuth(`${API_BASE_URL}/api/transactions/${id}`, { method: 'DELETE' });
-            if (res.ok) {
-                setTransactions((prev) => prev.filter((tx) => tx.id !== id));
-                // Refresh customers to get updated balances
-                // Refresh customers to get updated balances
-                const custRes = await fetchWithAuth(`${API_BASE_URL}/api/customers?t=${Date.now()}`);
-                if (custRes.ok) setCustomers(await custRes.json());
-                toast.success('交易已删除');
-            } else {
-                const err = await res.json();
-                toast.error('删除失败', { description: err.error || '无法执行删除' });
+            const [tx] = await db.select('SELECT * FROM transactions WHERE id = ?', [id]);
+            if (!tx) return;
+
+            // 1. Revert balance
+            if (tx.customerId) {
+                const amountToRevert = tx.type === 'Income' ? -tx.amount : tx.amount;
+                await db.execute('UPDATE customers SET balance = balance + ? WHERE id = ?', [amountToRevert, tx.customerId]);
             }
-        } catch {
-            toast.error('删除失败', { description: '网络连接异常' });
+
+            // 2. Delete transaction
+            await db.execute('DELETE FROM transactions WHERE id = ?', [id]);
+
+            // 3. Refresh state
+            setTransactions((prev) => prev.filter((t) => t.id !== id));
+            const updatedCustomers = await db.select('SELECT * FROM customers ORDER BY created_at DESC');
+            setCustomers(updatedCustomers);
+
+            toast.success('交易已删除');
+        } catch (error) {
+            toast.error('删除失败');
         }
     };
 
@@ -358,38 +328,43 @@ export const DataProvider = ({ children }) => {
         try {
             const data = JSON.parse(jsonData);
 
-            if (!data.customers || !Array.isArray(data.customers) || !data.transactions || !Array.isArray(data.transactions)) {
+            if (!data.customers || !data.transactions) {
                 toast.error('无效的备份文件格式');
                 return;
             }
 
-            const res = await fetchWithAuth(`${API_BASE_URL}/api/import`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    customers: data.customers,
-                    transactions: data.transactions
-                })
-            });
+            // 1. Clear existing
+            await db.execute('DELETE FROM transactions');
+            await db.execute('DELETE FROM customers');
 
-            if (res.ok) {
-                // Re-fetch data from server to ensure synchronization
-                const [custRes, txRes] = await Promise.all([
-                    fetchWithAuth(`${API_BASE_URL}/api/customers?t=${Date.now()}`),
-                    fetchWithAuth(`${API_BASE_URL}/api/transactions?t=${Date.now()}`)
-                ]);
-
-                if (custRes.ok && txRes.ok) {
-                    setCustomers(await custRes.json());
-                    setTransactions(await txRes.json());
-                    toast.success('数据恢复成功', { description: '系统数据已还原至备份状态' });
-                }
-            } else {
-                const err = await res.json();
-                toast.error('恢复失败', { description: err.error || '服务器拒绝了请求' });
+            // 2. Insert Customers
+            for (const cust of data.customers) {
+                await db.execute(
+                    'INSERT INTO customers (id, name, email, phone, address, balance, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                    [cust.id, cust.name, cust.email || '', cust.phone, cust.address || '', cust.balance || 0, cust.status || 'Active', cust.created_at || new Date().toISOString()]
+                );
             }
+
+            // 3. Insert Transactions
+            for (const tx of data.transactions) {
+                await db.execute(
+                    'INSERT INTO transactions (id, customerId, amount, type, category, date, description, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [tx.id, tx.customerId, tx.amount, tx.type, tx.category || 'Uncategorized', tx.date, tx.description || '', tx.status || 'Completed', tx.created_at || new Date().toISOString()]
+                );
+            }
+
+            // 4. Refresh
+            const [custs, txs] = await Promise.all([
+                db.select('SELECT * FROM customers ORDER BY created_at DESC'),
+                db.select('SELECT * FROM transactions ORDER BY date DESC')
+            ]);
+            setCustomers(custs);
+            setTransactions(txs);
+
+            toast.success('数据恢复成功');
         } catch (error) {
             console.error('Import error:', error);
-            toast.error('导入失败', { description: '文件解析错误或网络异常' });
+            toast.error('导入失败');
         }
     };
 
@@ -426,34 +401,22 @@ export const DataProvider = ({ children }) => {
 
     const resetData = async () => {
         try {
-            const res = await fetchWithAuth(`${API_BASE_URL}/api/reset`, { method: 'POST' });
-            if (res.ok) {
-                setCustomers([]);
-                setTransactions([]);
-                toast.success('系统已重置', { description: '所有数据已清空' });
-            } else {
-                const err = await res.json();
-                toast.error('重置失败', { description: err.error || '无法执行重置，请确认管理员权限' });
-            }
+            await db.execute('DELETE FROM transactions');
+            await db.execute('DELETE FROM customers');
+            await db.execute('DELETE FROM audit_logs');
+            await db.execute("DELETE FROM sqlite_sequence WHERE name='customers'");
+
+            setCustomers([]);
+            setTransactions([]);
+            toast.success('系统已重置', { description: '所有数据已清空' });
         } catch {
-            toast.error('重置失败', { description: '网络连接异常' });
+            toast.error('重置失败');
         }
     };
 
     return (
         <DataContext.Provider value={{
-            user,
-            token,
-            setToken: (t) => {
-                localStorage.setItem('token', t);
-                setToken(t);
-            },
-            logout: () => {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                setToken(null);
-                setUser(null);
-            },
+            loading,
             customers,
             transactions,
             categories,

@@ -1,41 +1,23 @@
 {
   "name": "financial-system",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
-  "main": "electron/main.js",
   "scripts": {
-    "server": "node server/index.js",
-    "dev": "concurrently \"npm run server\" \"vite\"",
+    "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "electron:dev": "concurrently -k \"vite --port 5177\" \"wait-on tcp:5177 && electron .\"",
-    "electron:build": "vite build --mode electron && electron-builder"
-  },
-  "build": {
-    "appId": "com.financial.system",
-    "productName": "财务通",
-    "directories": {
-      "output": "dist-electron"
-    },
-    "win": {
-      "target": "nsis"
-    }
+    "tauri": "tauri"
   },
   "dependencies": {
-    "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^12.5.0",
+    "@tauri-apps/api": "^2.3.1",
+    "@tauri-apps/plugin-sql": "~2.2.0",
     "clsx": "^2.1.1",
-    "cors": "^2.8.5",
-    "express": "^5.2.1",
     "framer-motion": "^12.23.26",
     "html2canvas": "^1.4.1",
-    "jsonwebtoken": "^9.0.3",
     "jspdf": "^3.0.4",
     "lucide-react": "^0.562.0",
-    "node-cron": "^4.2.1",
-    "node-fetch": "^3.3.2",
     "papaparse": "^5.5.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -46,20 +28,17 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@tauri-apps/cli": "^2.9.6",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.23",
-    "concurrently": "^9.2.1",
-    "electron": "^39.2.7",
-    "electron-builder": "^26.0.12",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
-    "vite": "^7.2.4",
-    "wait-on": "^9.0.3"
+    "vite": "^7.2.4"
   }
 }

@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { API_BASE_URL } from '../config';
 import { toast } from 'sonner';
+import * as db from '../utils/tauriDb';
 
 const SettingsContext = createContext();
 
@@ -19,21 +19,23 @@ const defaultSettings = {
     page_title: '财务通 - 专业财务管理'
 };
 
+
 export const SettingsProvider = ({ children }) => {
     const [settings, setSettings] = useState(defaultSettings);
     const [loading, setLoading] = useState(true);
 
     const fetchSettings = async () => {
         try {
-            const res = await fetch('/api/settings');
-            if (res.ok) {
-                const data = await res.json();
-                // Merge with defaults to ensure all keys exist
-                setSettings({ ...defaultSettings, ...data });
+            const results = await db.select('SELECT key, value FROM settings');
+            if (results.length > 0) {
+                const settingsObj = {};
+                results.forEach(row => {
+                    settingsObj[row.key] = row.value;
+                });
+                setSettings({ ...defaultSettings, ...settingsObj });
             }
         } catch (error) {
             console.error('Failed to fetch settings:', error);
-            // Fallback to defaults
         } finally {
             setLoading(false);
         }
@@ -51,23 +53,15 @@ export const SettingsProvider = ({ children }) => {
 
     const updateSettings = async (newSettings) => {
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${API_BASE_URL}/api/settings`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(newSettings)
-            });
-
-            if (res.ok) {
-                setSettings(prev => ({ ...prev, ...newSettings }));
-                toast.success('系统设置已更新');
-                return true;
-            } else {
-                throw new Error('Failed to update');
+            for (const [key, value] of Object.entries(newSettings)) {
+                await db.execute(
+                    'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+                    [key, value.toString()]
+                );
             }
+            setSettings(prev => ({ ...prev, ...newSettings }));
+            toast.success('系统设置已更新');
+            return true;
         } catch (error) {
             console.error('Update settings failed:', error);
             toast.error('设置更新失败');
