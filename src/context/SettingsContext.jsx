@@ -51,9 +51,13 @@ export const SettingsProvider = ({ children }) => {
 
     const updateSettings = async (newSettings) => {
         try {
+            const token = localStorage.getItem('token');
             const res = await fetch(`${API_BASE_URL}/api/settings`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify(newSettings)
             });
 
