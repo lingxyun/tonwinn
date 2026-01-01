@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Plus, MoreHorizontal, Phone, MapPin, Trash2, Edit, Download, Upload, FileSpreadsheet, ChevronDown } from 'lucide-react';
+import { Search, Plus, MoreHorizontal, Phone, MapPin, Trash2, Edit, Download, Upload, FileSpreadsheet, FileText, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import Modal from '../components/ui/Modal';
@@ -16,6 +16,7 @@ const Customers = () => {
         deleteCustomer,
         exportCustomersToCSV,
         exportTransactionDetailsToCSV,
+        downloadCustomerTemplate,
         importCustomersFromCSV
     } = useData();
     const [searchTerm, setSearchTerm] = useState('');
@@ -106,6 +107,12 @@ const Customers = () => {
                                 >
                                     <FileSpreadsheet className="w-4 h-4 text-emerald-500" /> 导出交易全量明细
                                 </button>
+                                <button
+                                    onClick={() => { downloadCustomerTemplate(); setIsDataMenuOpen(false); }}
+                                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2"
+                                >
+                                    <FileText className="w-4 h-4 text-orange-500" /> 下载导入模板
+                                </button>
                                 <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
                                 <button
                                     onClick={() => { fileInputRef.current?.click(); setIsDataMenuOpen(false); }}
@@ -147,7 +154,7 @@ const Customers = () => {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input
                             type="text"
-                            placeholder="搜索客户姓名、邮箱或电话..."
+                            placeholder="搜索客户姓名、地址或电话..."
                             className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}

@@ -218,14 +218,14 @@ export const DataProvider = ({ children }) => {
     };
 
     const exportCustomersToCSV = () => {
-        const headers = ['ID', '姓名', '电话', '邮箱', '账户余额', '状态'];
+        const headers = ['ID', '姓名', '电话', '地址', '账户余额', '状态'];
         const formatRow = (row) => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(",");
 
         const rows = customers.map(c => [
             c.id,
             c.name,
             c.phone,
-            c.email,
+            c.address || '',
             c.balance,
             c.status === 'Active' ? '活跃' : '停用'
         ]);
@@ -255,6 +255,14 @@ export const DataProvider = ({ children }) => {
         downloadCSV(csvContent, `交易全量明细_${new Date().toLocaleDateString()}.csv`);
     };
 
+    const downloadCustomerTemplate = () => {
+        const headers = ['ID', '姓名', '电话', '地址', '账户余额', '状态'];
+        const exampleRow = ['', '张三', '13800138000', '上海市浦东新区', '500.00', '活跃'];
+        const formatRow = (row) => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(",");
+        const csvContent = [headers, exampleRow].map(formatRow).join("\n");
+        downloadCSV(csvContent, '客户导入模板.csv');
+    };
+
     const importCustomersFromCSV = async (file) => {
         const reader = new FileReader();
         reader.onload = async (e) => {
@@ -268,7 +276,7 @@ export const DataProvider = ({ children }) => {
 
             for (const line of dataLines) {
                 // simple split by comma, could be improved with a lib if needed
-                const [id, name, phone, email, balance, status] = line.split(",").map(val => val.trim());
+                const [id, name, phone, address, balance, status] = line.split(",").map(val => val.trim());
 
                 if (name && phone) {
                     try {
@@ -278,7 +286,8 @@ export const DataProvider = ({ children }) => {
                             body: JSON.stringify({
                                 name,
                                 phone,
-                                email: email || '',
+                                address: address || '',
+                                email: '',
                                 balance: parseFloat(balance || 0),
                                 status: status === '活跃' ? 'Active' : 'Inactive'
                             })
@@ -382,6 +391,7 @@ export const DataProvider = ({ children }) => {
             importData,
             exportCustomersToCSV,
             exportTransactionDetailsToCSV,
+            downloadCustomerTemplate,
             importCustomersFromCSV,
             stats: getStats()
         }}>
