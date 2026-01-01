@@ -78,8 +78,8 @@ const Customers = () => {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">客户管理</h1>
-                    <p className="text-slate-500 mt-1">管理客户信息和账户余额</p>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">客户管理</h1>
+                    <p className="text-slate-500 dark:text-slate-400 mt-1">管理客户信息和账户余额</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="relative" ref={dataMenuRef}>
@@ -179,8 +179,8 @@ const Customers = () => {
                                                 {customer.name.charAt(0)}
                                             </div>
                                             <div>
-                                                <div className="text-sm font-medium text-slate-900">{customer.name}</div>
-                                                <div className="text-xs text-slate-500">ID: #{customer.id.toString().padStart(4, '0')}</div>
+                                                <div className="text-sm font-medium text-slate-900 dark:text-white">{customer.name}</div>
+                                                <div className="text-xs text-slate-500 dark:text-slate-400">ID: #{customer.id.toString().padStart(4, '0')}</div>
                                             </div>
                                         </div>
                                     </td>
@@ -197,7 +197,7 @@ const Customers = () => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="text-sm font-medium text-slate-900 font-mono">
+                                        <div className="text-sm font-medium text-slate-900 dark:text-white font-mono">
                                             ¥{customer.balance?.toFixed(2) || '0.00'}
                                         </div>
                                     </td>

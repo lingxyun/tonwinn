@@ -17,7 +17,7 @@ const Accounts = () => {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-slate-900">账目详情</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">账目详情</h1>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg shadow-blue-200">
@@ -42,7 +42,7 @@ const Accounts = () => {
 
             {/* Reuse Customer Table or a simplified Ledger table */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <h2 className="text-lg font-bold text-slate-900 mb-4">账户列表</h2>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-4">账户列表</h2>
                 <Customers />
                 {/* Embedded Customers Component for now as it contains the list */}
             </div>
