@@ -1,10 +1,10 @@
-{
+﻿{
   "version": "0.1.3",
   "notes": "这是新版本的更新说明：\n1. 修复了已知问题\n2. 优化了性能",
   "pub_date": "2026-01-04T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "untrusted comment: signature from tauri secret key\nRUTzW5WOBc6af7duhnhNvRwSkx4l7OTotCKvurlr4uPABJaVjZj1rwonSMhoTNtHu1mT90iimkfKXhZclMoqZvTLd53MCQw=\ntrusted comment: timestamp:1767459152\tfile:CRM_0.1.3_x64-setup.zip\n1W2spsYp4ThLYKd3JAFxB1nAECsm/QHBp1Bx40607THJ8imDCm4sEJXMLg9Jl/va8hMvd8DIg+O5G5SZr1k66Bg==",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUelc1V09CYzZhZjdIQzlncTlMR3BTcjdCbXdJY0t5MmxBajVCTUs1MG93bXdLQ0FnZzNZcGtHRWRyNkRabXFyZFJ4T3RNU25LSUt0WW9zUFphZDRPVHllZktSUC8wL0FjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzY3NDU4MTYxCWZpbGU66bG86LeDQ1JNXzAuMS4zX3g2NC1zZXR1cC56aXAKKzZ0ZHRJeVdyWW13dVo5ZWxvY0xUdkZlYk9PYVBjelBPdUlpSlFZZHlNcUhqNXhQZ2gxbXU3UkFFK2NNZFN6VGtGVmpIWjVVeExpRFRUMGFPcThiQ2c9PQo=",
       "url": "https://github.com/lingxyun/tonwinn/releases/download/v0.1.3/CRM_0.1.3_x64-setup.zip"
     }
   }
