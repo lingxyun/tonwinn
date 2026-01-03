@@ -77,16 +77,16 @@ export const DataProvider = ({ children }) => {
 
 
     // --- Actions: Customers ---
-    const addCustomer = async (data) => {
+    const addCustomer = async (customer, role = 'Customer') => {
         try {
             await db.execute(
-                'INSERT INTO customers (name, email, phone, address, balance, status) VALUES (?, ?, ?, ?, ?, ?)',
-                [data.name, data.email || '', data.phone, data.address || '', data.balance || 0, data.status || 'Active']
+                'INSERT INTO customers (name, email, address, phone, balance, status, role) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [customer.name, customer.email || '', customer.address || '', customer.phone, customer.balance || 0, 'Active', role]
             );
-            const newCust = (await db.select('SELECT * FROM customers ORDER BY id DESC LIMIT 1'))[0];
-            setCustomers((prev) => [newCust, ...prev]);
-            toast.success('客户添加成功');
+            refreshData();
+            toast.success(`${role === 'Supplier' ? '供货商' : '客户'}添加成功`);
         } catch (error) {
+            console.error('Failed to add customer:', error);
             toast.error('添加失败');
         }
     };
@@ -94,13 +94,13 @@ export const DataProvider = ({ children }) => {
     const updateCustomer = async (data) => {
         try {
             await db.execute(
-                'UPDATE customers SET name = ?, email = ?, phone = ?, address = ?, balance = ?, status = ? WHERE id = ?',
-                [data.name, data.email, data.phone, data.address, data.balance, data.status, data.id]
+                'UPDATE customers SET name = ?, email = ?, phone = ?, address = ?, balance = ?, status = ?, role = ? WHERE id = ?',
+                [data.name, data.email, data.phone, data.address, data.balance, data.status, data.role || 'Customer', data.id]
             );
             setCustomers((prev) =>
-                prev.map((c) => (c.id === data.id ? data : c))
+                prev.map((c) => (c.id === data.id ? { ...data, role: data.role || c.role } : c))
             );
-            toast.success('客户信息已更新');
+            toast.success(`${(data.role || 'Customer') === 'Supplier' ? '供货商' : '客户'}信息已更新`);
         } catch (error) {
             toast.error('更新失败');
         }
@@ -108,12 +108,14 @@ export const DataProvider = ({ children }) => {
 
     const deleteCustomer = async (id) => {
         try {
+            const entity = customers.find(c => c.id === id);
+            const role = entity?.role || 'Customer';
             // Transaction to delete customer and their transactions
             await db.execute('DELETE FROM transactions WHERE customerId = ?', [id]);
             await db.execute('DELETE FROM customers WHERE id = ?', [id]);
             setCustomers((prev) => prev.filter((c) => c.id !== id));
             setTransactions((prev) => prev.filter((t) => t.customerId !== id));
-            toast.success('客户及相关交易已删除');
+            toast.success(`${role === 'Supplier' ? '供货商' : '客户'}及相关交易已删除`);
         } catch (error) {
             toast.error('删除失败');
         }
@@ -557,7 +559,7 @@ export const DataProvider = ({ children }) => {
             const results = {
                 totalRevenue: thisYearRevenue,
                 totalOrders: safeTransactions.length,
-                activeCustomers: (customers || []).filter(c => c.status === 'Active').length,
+                activeCustomers: (customers || []).filter(c => c.status === 'Active' && c.role !== 'Supplier').length,
                 growth: (yearGrowthRate >= 0 ? "+" : "") + yearGrowthRate.toFixed(1) + "%",
                 profitMoM: calcGrowth(thisMonthMetrics.profit, lastMonthMetrics.profit, true),
                 profitTrend: thisMonthMetrics.profit >= lastMonthMetrics.profit ? 'up' : 'down',

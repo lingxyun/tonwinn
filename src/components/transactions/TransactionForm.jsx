@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { useData } from '../../context/DataContext';
 
 const TransactionForm = ({ onSubmit, onCancel, initialData }) => {
-    const { customers, categories: allCategories } = useData();
+    const { customers: allEntities, categories: allCategories } = useData();
+    const [entityFilter, setEntityFilter] = useState('All'); // 'All', 'Customer', 'Supplier'
 
     const [formData, setFormData] = useState({
         customerId: initialData?.customerId || '',
@@ -41,17 +42,48 @@ const TransactionForm = ({ onSubmit, onCancel, initialData }) => {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">关联客户</label>
+                <div className="flex justify-between items-center">
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                        {formData.type === 'Income' ? '关联客户' : '关联往来单位'}
+                    </label>
+                    <div className="flex gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setEntityFilter('All')}
+                            className={cn("text-[10px] px-2 py-0.5 rounded border", entityFilter === 'All' ? "bg-primary text-white border-primary" : "text-slate-400 border-slate-200")}
+                        >
+                            全部
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setEntityFilter('Customer')}
+                            className={cn("text-[10px] px-2 py-0.5 rounded border", entityFilter === 'Customer' ? "bg-primary text-white border-primary" : "text-slate-400 border-slate-200")}
+                        >
+                            仅客户
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setEntityFilter('Supplier')}
+                            className={cn("text-[10px] px-2 py-0.5 rounded border", entityFilter === 'Supplier' ? "bg-primary text-white border-primary" : "text-slate-400 border-slate-200")}
+                        >
+                            仅供货商
+                        </button>
+                    </div>
+                </div>
                 <select
                     className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-slate-900 dark:text-white"
                     value={formData.customerId}
                     onChange={e => setFormData({ ...formData, customerId: e.target.value })}
                     required
                 >
-                    <option value="">选择客户...</option>
-                    {customers.map(c => (
-                        <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>
-                    ))}
+                    <option value="">选择...</option>
+                    {(allEntities || [])
+                        .filter(e => entityFilter === 'All' || e.role === entityFilter)
+                        .map(c => (
+                            <option key={c.id} value={c.id}>
+                                [{c.role === 'Supplier' ? '供' : '客'}] {c.name} ({c.phone})
+                            </option>
+                        ))}
                 </select>
             </div>
 

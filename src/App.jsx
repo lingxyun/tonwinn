@@ -4,6 +4,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import Dashboard from './pages/Dashboard';
 import Customers from './pages/Customers';
+import Suppliers from './pages/Suppliers';
 import Orders from './pages/Orders';
 import Accounts from './pages/Accounts';
 
@@ -53,6 +54,7 @@ function App() {
               }>
                 <Route index element={<Dashboard />} />
                 <Route path="customers" element={<Customers />} />
+                <Route path="suppliers" element={<Suppliers />} />
                 <Route path="orders" element={<Orders />} />
                 <Route path="orders/categories" element={<Categories />} />
                 <Route path="accounts" element={<Accounts />} />

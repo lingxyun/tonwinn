@@ -1,13 +1,14 @@
 
 import React, { useState } from 'react';
 
-const CustomerForm = ({ onSubmit, onCancel, initialData = null }) => {
+const CustomerForm = ({ onSubmit, onCancel, initialData = null, isSupplier = false }) => {
     const [formData, setFormData] = useState(initialData || {
         name: '',
         address: '',
         phone: '',
         balance: '0',
-        status: 'Active'
+        status: 'Active',
+        role: isSupplier ? 'Supplier' : 'Customer'
     });
 
     const handleSubmit = (e) => {
@@ -21,14 +22,14 @@ const CustomerForm = ({ onSubmit, onCancel, initialData = null }) => {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">客户姓名</label>
+                <label className="text-sm font-medium text-slate-700">{isSupplier ? '供货商名称' : '客户姓名'}</label>
                 <input
                     type="text"
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     value={formData.name}
                     onChange={e => setFormData({ ...formData, name: e.target.value })}
                     required
-                    placeholder="请输入客户姓名"
+                    placeholder={isSupplier ? "请输入工厂或供货商名称" : "请输入客户姓名"}
                 />
             </div>
 
@@ -45,13 +46,13 @@ const CustomerForm = ({ onSubmit, onCancel, initialData = null }) => {
             </div>
 
             <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">选择地址</label>
+                <label className="text-sm font-medium text-slate-700">{isSupplier ? '经营/发货地址' : '收货地址'}</label>
                 <input
                     type="text"
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     value={formData.address}
                     onChange={e => setFormData({ ...formData, address: e.target.value })}
-                    placeholder="请输入客户地址"
+                    placeholder={isSupplier ? "请输入供货商地址" : "请输入客户地址"}
                 />
             </div>
 
@@ -69,7 +70,7 @@ const CustomerForm = ({ onSubmit, onCancel, initialData = null }) => {
                 <p className="text-xs text-slate-500">
                     {initialData
                         ? '注意：直接修改此数值将覆盖由交易自动计算的余额。'
-                        : '正数表示预存款，负数表示欠款。'}
+                        : isSupplier ? '正数表示我方欠款，负数表示预付款（或溢缴款）。' : '正数表示预存款，负数表示客户欠款。'}
                 </p>
             </div>
 
@@ -98,7 +99,7 @@ const CustomerForm = ({ onSubmit, onCancel, initialData = null }) => {
                     type="submit"
                     className="flex-1 px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-blue-600 transition-colors shadow-sm shadow-blue-200"
                 >
-                    {initialData ? '更新客户' : '保存客户'}
+                    {initialData ? (isSupplier ? '更新供货商' : '更新客户') : (isSupplier ? '保存供货商' : '保存客户')}
                 </button>
             </div>
         </form>

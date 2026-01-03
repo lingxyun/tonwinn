@@ -19,6 +19,7 @@ const Sidebar = ({ isDarkMode, toggleTheme, isCollapsed, setIsCollapsed }) => {
     const navItems = [
         { icon: LayoutDashboard, label: '概览', to: '/' },
         { icon: Users, label: '客户管理', to: '/customers' },
+        { icon: Users, label: '供货商管理', to: '/suppliers' },
         {
             icon: FileText,
             label: '订单管理',

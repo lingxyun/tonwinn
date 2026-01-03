@@ -78,6 +78,12 @@ pub fn get_migrations() -> Vec<Migration> {
                 INSERT OR IGNORE INTO categories (name, type) VALUES ('房租水电', 'Expense');
             ",
             kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 3,
+            description: "add role column to customers",
+            sql: "ALTER TABLE customers ADD COLUMN role TEXT DEFAULT 'Customer';",
+            kind: MigrationKind::Up,
         }
     ]
 }
