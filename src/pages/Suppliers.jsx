@@ -226,33 +226,23 @@ const Suppliers = () => {
                                             {supplier.status === 'Active' ? '活跃' : '停用'}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-right relative">
-                                        <button
-                                            onClick={() => setActiveMenuId(activeMenuId === supplier.id ? null : supplier.id)}
-                                            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400"
-                                        >
-                                            <MoreHorizontal className="w-4 h-4" />
-                                        </button>
-
-                                        {activeMenuId === supplier.id && (
-                                            <div
-                                                ref={menuRef}
-                                                className="absolute right-0 bottom-full mb-2 w-32 bg-white dark:bg-slate-950 rounded-lg shadow-xl border border-slate-100 dark:border-slate-800 z-50 py-1 animate-in fade-in slide-in-from-bottom-2 duration-200"
+                                    <td className="px-6 py-4 text-right">
+                                        <div className="flex justify-end gap-1">
+                                            <button
+                                                onClick={() => openEditModal(supplier)}
+                                                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-all text-slate-500 hover:text-primary"
+                                                title="编辑"
                                             >
-                                                <button
-                                                    onClick={() => openEditModal(supplier)}
-                                                    className="w-full text-left px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2"
-                                                >
-                                                    <Edit className="w-3.5 h-3.5" /> 编辑
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteSupplier(supplier.id, supplier.name)}
-                                                    className="w-full text-left px-3 py-1.5 text-xs text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/10 flex items-center gap-2"
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5" /> 删除
-                                                </button>
-                                            </div>
-                                        )}
+                                                <Edit className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteSupplier(supplier.id, supplier.name)}
+                                                className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-md transition-all text-slate-400 hover:text-rose-600"
+                                                title="删除"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
