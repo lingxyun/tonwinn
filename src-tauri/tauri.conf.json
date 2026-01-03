@@ -34,7 +34,7 @@
       "endpoints": [
         "https://raw.githubusercontent.com/lingxyun/tonwinn/main/update.json"
       ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IHB1YmxpYyBrZXk6IEE3OTgyNzY4RDM1OTM0RTUyOENCQzI5NTY2OUFFMkI4ClJXUlRZMEl5ZnBiRkl1NDhkRDRXWGxhUG5tSTJ1MnE0NjF6MG1FdlN1UnRzWlVidnIK"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdGOUFDRTA1OEU5NTVCRjMKUldUelc1V09CYzZhZjlIWCtRRDRJWXNBOVYzS2xOWXlPSDFoa2YrQnF0aFZHTW1PTEVQOXFWS2oK"
     },
     "process": {}
   },
