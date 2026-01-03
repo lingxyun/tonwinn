@@ -270,18 +270,19 @@ export const DataProvider = ({ children }) => {
     };
 
     const exportCustomersToCSV = () => {
-        const headers = ['ID', '姓名', '电话', '地址', '账户余额', '状态'];
+        const headers = ['ID', '姓名', '电话', '地址', '账户余额', '状态', '类型'];
         const rows = customers.map(c => ({
             'ID': c.id,
             '姓名': c.name,
             '电话': c.phone,
             '地址': c.address || '',
             '账户余额': c.balance,
-            '状态': c.status === 'Active' ? '活跃' : '停用'
+            '状态': c.status === 'Active' ? '活跃' : '停用',
+            '类型': c.role === 'Supplier' ? '供货商' : '客户'
         }));
 
-        const csvContent = Papa.unparse({ fields: headers, data: rows });
-        downloadCSV(csvContent, `客户名录_${new Date().toLocaleDateString()}.csv`);
+        const csvContent = Papa.unparse({ headers, data: rows });
+        downloadCSV(csvContent, `往来单位名录_${new Date().toLocaleDateString()}.csv`);
     };
 
     const exportTransactionDetailsToCSV = () => {
@@ -306,10 +307,10 @@ export const DataProvider = ({ children }) => {
     };
 
     const downloadCustomerTemplate = () => {
-        const headers = ['ID', '姓名', '电话', '地址', '账户余额', '状态'];
-        const exampleRow = ['', '张三', '13800138000', '上海市浦东新区', '500.00', '活跃'];
+        const headers = ['ID', '姓名', '电话', '地址', '账户余额', '状态', '类型'];
+        const exampleRow = ['', '张三', '13800138000', '上海市浦东新区', '500.00', '活跃', '客户'];
         const csvContent = Papa.unparse({ fields: headers, data: [exampleRow] });
-        downloadCSV(csvContent, '客户导入模板.csv');
+        downloadCSV(csvContent, '导入模板.csv');
     };
 
     const importTransactionsFromCSV = async (file) => {
@@ -362,7 +363,7 @@ export const DataProvider = ({ children }) => {
         });
     };
 
-    const importCustomersFromCSV = async (file) => {
+    const importCustomersFromCSV = async (file, defaultRole = 'Customer') => {
         Papa.parse(file, {
             header: true,
             skipEmptyLines: true,
@@ -372,17 +373,20 @@ export const DataProvider = ({ children }) => {
                 let failCount = 0;
 
                 for (const item of data) {
-                    const name = item['姓名'];
-                    const phone = item['电话'];
-                    const address = item['地址'];
-                    const balance = parseFloat(item['账户余额'] || 0);
-                    const statusText = item['状态'];
+                    const name = item['姓名'] || item['Name'] || item['name'];
+                    const phone = item['电话'] || item['Phone'] || item['phone'];
+                    const address = item['地址'] || item['Address'] || item['address'];
+                    const balance = parseFloat(item['账户余额'] || item['Balance'] || 0);
+                    const statusText = item['状态'] || item['Status'];
+                    const roleText = item['类型'] || item['Role'] || defaultRole;
+
+                    const role = (roleText === '供货商' || roleText === 'Supplier') ? 'Supplier' : 'Customer';
 
                     if (name && phone) {
                         try {
                             await db.execute(
-                                'INSERT INTO customers (name, phone, address, email, balance, status) VALUES (?, ?, ?, ?, ?, ?)',
-                                [name, phone, address || '', '', balance, statusText === '活跃' ? 'Active' : 'Inactive']
+                                'INSERT INTO customers (name, phone, address, email, balance, status, role) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                                [name, phone, address || '', '', balance, statusText === '活跃' || statusText === 'Active' ? 'Active' : 'Inactive', role]
                             );
                             successCount++;
                         } catch (err) {
@@ -397,8 +401,8 @@ export const DataProvider = ({ children }) => {
                 setCustomers(updatedCusts);
 
                 if (successCount > 0) {
-                    toast.success(`成功导入 ${successCount} 个客户`, {
-                        description: failCount > 0 ? `失败 ${failCount} 个` : undefined
+                    toast.success(`成功导入 ${successCount} 条记录`, {
+                        description: failCount > 0 ? `失败 ${failCount} 条` : undefined
                     });
                 } else if (failCount > 0) {
                     toast.error('导入失败，请检查文件格式');
@@ -426,8 +430,8 @@ export const DataProvider = ({ children }) => {
             console.log(`Importing ${data.customers.length} customers...`);
             for (const cust of data.customers) {
                 await db.execute(
-                    'INSERT INTO customers (id, name, email, phone, address, balance, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                    [cust.id, cust.name, cust.email || '', cust.phone, cust.address || '', cust.balance || 0, cust.status || 'Active', cust.created_at || new Date().toISOString()]
+                    'INSERT INTO customers (id, name, email, phone, address, balance, status, created_at, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [cust.id, cust.name, cust.email || '', cust.phone, cust.address || '', cust.balance || 0, cust.status || 'Active', cust.created_at || new Date().toISOString(), cust.role || 'Customer']
                 );
             }
 

@@ -138,10 +138,7 @@ const Customers = () => {
                         type="file"
                         ref={fileInputRef}
                         onChange={(e) => {
-                            if (e.target.files?.[0]) {
-                                importCustomersFromCSV(e.target.files[0]);
-                                e.target.value = ''; // Reset
-                            }
+                                importCustomersFromCSV(e.target.files[0], 'Customer');
                         }}
                         className="hidden"
                         accept=".csv"
@@ -274,7 +271,7 @@ const Customers = () => {
                                         {activeMenuId === customer.id && (
                                             <div
                                                 ref={menuRef}
-                                                className="absolute right-8 top-10 w-32 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-100 dark:border-slate-800 z-10 py-1"
+                                                className="absolute right-0 bottom-full mb-2 w-32 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 z-50 py-1"
                                             >
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); openEditModal(customer); }}

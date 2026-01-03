@@ -139,7 +139,7 @@ const Suppliers = () => {
                         ref={fileInputRef}
                         onChange={(e) => {
                             if (e.target.files?.[0]) {
-                                importCustomersFromCSV(e.target.files[0]);
+                                importCustomersFromCSV(e.target.files[0], 'Supplier');
                                 e.target.value = '';
                             }
                         }}
@@ -237,7 +237,7 @@ const Suppliers = () => {
                                         {activeMenuId === supplier.id && (
                                             <div
                                                 ref={menuRef}
-                                                className="absolute right-6 top-10 w-32 bg-white dark:bg-slate-950 rounded-lg shadow-xl border border-slate-100 dark:border-slate-800 z-10 py-1 animate-in fade-in slide-in-from-top-2 duration-200"
+                                                className="absolute right-0 bottom-full mb-2 w-32 bg-white dark:bg-slate-950 rounded-lg shadow-xl border border-slate-100 dark:border-slate-800 z-50 py-1 animate-in fade-in slide-in-from-bottom-2 duration-200"
                                             >
                                                 <button
                                                     onClick={() => openEditModal(supplier)}
