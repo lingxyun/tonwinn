@@ -44,7 +44,9 @@ const Customers = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const filteredCustomers = customerList.filter(c =>
+    const customerOnlyList = customerList.filter(c => c.role !== 'Supplier');
+
+    const filteredCustomers = customerOnlyList.filter(c =>
         c.name.includes(searchTerm) ||
         (c.address && c.address.includes(searchTerm)) ||
         c.phone.includes(searchTerm)

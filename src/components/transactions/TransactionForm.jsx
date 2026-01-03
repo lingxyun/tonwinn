@@ -1,6 +1,6 @@
-
 import React, { useState } from 'react';
 import { useData } from '../../context/DataContext';
+import { cn } from '../../lib/utils';
 
 const TransactionForm = ({ onSubmit, onCancel, initialData }) => {
     const { customers: allEntities, categories: allCategories } = useData();
