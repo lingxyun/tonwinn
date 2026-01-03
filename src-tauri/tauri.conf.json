@@ -13,10 +13,11 @@
     "windows": [
       {
         "title": "鱼跃CRM",
-        "width": 800,
-        "height": 600,
+        "width": 1200,
+        "height": 800,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "label": "main"
       }
     ],
     "security": {
@@ -28,7 +29,14 @@
       "dbs": [
         "sqlite:financial.db"
       ]
-    }
+    },
+    "updater": {
+      "endpoints": [
+        "https://raw.githubusercontent.com/lingxyun/tonwinn/main/update.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IHB1YmxpYyBrZXk6IEE3OTgyNzY4RDM1OTM0RTUyOENCQzI5NTY2OUFFMkI4ClJXUlRZMEl5ZnBiRkl1NDhkRDRXWGxhUG5tSTJ1MnE0NjF6MG1FdlN1UnRzWlVidnIK"
+    },
+    "process": {}
   },
   "bundle": {
     "active": true,

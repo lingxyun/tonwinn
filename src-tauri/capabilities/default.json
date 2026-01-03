@@ -27,6 +27,8 @@
     "fs:allow-desktop-write",
     "fs:allow-download-write",
     "fs:allow-document-write",
-    "fs:write-all"
+    "fs:write-all",
+    "updater:default",
+    "process:default"
   ]
 }
