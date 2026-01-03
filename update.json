@@ -4,7 +4,7 @@
   "pub_date": "2026-01-04T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "untrusted comment: signature from tauri secret key\nRUTrW5WOBc6af1i71Fryf8t8xXKe3WLEHvhUWIbo057vJ98p4Fny1BXZyBhB9ry7Q8THaHTPVRSAiixoXskmtiCJmAdU3DwHOUwY=\nuntrusted comment: timestamp:1767458682	file:CRM_0.1.3_x64-setup.zip\nqtm7XqJ/NcptEthNWsOmZBeq9zPfUxUjKa/yh1pw6kFpaF8f1pktQ0H3BsjIK7luzUh5gsFrnXJDgnDHdIxbDQ==\n",
+      "signature": "untrusted comment: signature from tauri secret key\nRUTzW5WOBc6af7duhnhNvRwSkx4l7OTotCKvurlr4uPABJaVjZj1rwonSMhoTNtHu1mT90iimkfKXhZclMoqZvTLd53MCQw=\ntrusted comment: timestamp:1767459152\tfile:CRM_0.1.3_x64-setup.zip\n1W2spsYp4ThLYKd3JAFxB1nAECsm/QHBp1Bx40607THJ8imDCm4sEJXMLg9Jl/va8hMvd8DIg+O5G5SZr1k66Bg==",
       "url": "https://github.com/lingxyun/tonwinn/releases/download/v0.1.3/CRM_0.1.3_x64-setup.zip"
     }
   }

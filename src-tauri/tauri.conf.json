@@ -34,7 +34,7 @@
       "endpoints": [
         "https://raw.githubusercontent.com/lingxyun/tonwinn/main-tauri/update.json"
       ],
-      "pubkey": "RWTzW5WOBc6af9HX+QD4IYsA9V3KlNYyOH1hk+BqtVGHMmOLEP9qVKj"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdGOUFDRTA1OEU5NTVCRjMKUldUelc1V09CYzZhZjlIWCtRRDRJWXNBOVYzS2xOWXlPSDFoa2YrQnF0aFZHTW1PTEVQOXFWS2oKS0dtZ2s4WHdsZSt4VjBNdk09Cg=="
     },
     "process": {}
   },
