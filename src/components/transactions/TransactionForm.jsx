@@ -38,20 +38,34 @@ const TransactionForm = ({ onSubmit, onCancel, initialData }) => {
         });
     };
 
+    const customersOnly = (customers || []).filter(c => c.role === 'Customer' || !c.role);
+    const suppliersOnly = (customers || []).filter(c => c.role === 'Supplier');
+
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">关联客户</label>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">关联对象 (客户/供货商)</label>
                 <select
                     className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-slate-900 dark:text-white"
                     value={formData.customerId}
                     onChange={e => setFormData({ ...formData, customerId: e.target.value })}
                     required
                 >
-                    <option value="">选择客户...</option>
-                    {customers.map(c => (
-                        <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>
-                    ))}
+                    <option value="">选择关联对象...</option>
+                    {customersOnly.length > 0 && (
+                        <optgroup label="客户">
+                            {customersOnly.map(c => (
+                                <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>
+                            ))}
+                        </optgroup>
+                    )}
+                    {suppliersOnly.length > 0 && (
+                        <optgroup label="供货商">
+                            {suppliersOnly.map(c => (
+                                <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>
+                            ))}
+                        </optgroup>
+                    )}
                 </select>
             </div>
 

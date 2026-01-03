@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { customers as initialCustomers, transactions as initialTransactions } from '../utils/mockData';
 import { toast } from 'sonner';
 import { API_BASE_URL } from '../config';
 import Papa from 'papaparse';
+import { useAuth } from './AuthContext';
 
 const DataContext = createContext();
 
@@ -21,8 +21,9 @@ export const DataProvider = ({ children }) => {
     const [transactions, setTransactions] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || null);
-    const [token, setToken] = useState(localStorage.getItem('token') || null);
+
+    // Use user and token from AuthContext instead of local state
+    const { user, token } = useAuth();
 
     // Helper for fetch with token
     const fetchWithAuth = async (url, options = {}) => {
@@ -73,19 +74,20 @@ export const DataProvider = ({ children }) => {
 
 
     // --- Actions: Customers ---
-    const addCustomer = async (customerData) => {
+    const addCustomer = async (customerData, role = 'Customer') => {
         try {
             const res = await fetchWithAuth(`${API_BASE_URL}/api/customers`, {
                 method: 'POST',
                 body: JSON.stringify({
                     ...customerData,
+                    role,
                     balance: parseFloat(customerData.balance || 0)
                 })
             });
             if (res.ok) {
                 const newCustomer = await res.json();
                 setCustomers((prev) => [newCustomer, ...prev]);
-                toast.success('客户添加成功');
+                toast.success(`${role === 'Supplier' ? '供货商' : '客户'}添加成功`);
             }
         } catch (error) {
             toast.error('添加失败');
@@ -103,7 +105,7 @@ export const DataProvider = ({ children }) => {
                 setCustomers((prev) =>
                     prev.map((c) => (c.id === updated.id ? updated : c))
                 );
-                toast.success('客户信息已更新');
+                toast.success(`${updated.role === 'Supplier' ? '供货商' : '客户'}信息已更新`);
             }
         } catch (error) {
             toast.error('更新失败');
@@ -114,8 +116,10 @@ export const DataProvider = ({ children }) => {
         try {
             const res = await fetchWithAuth(`${API_BASE_URL}/api/customers/${id}`, { method: 'DELETE' });
             if (res.ok) {
+                const customer = customers.find(c => c.id === id);
+                const role = customer?.role || 'Customer';
                 setCustomers((prev) => prev.filter((c) => c.id !== id));
-                toast.success('客户已删除');
+                toast.success(`${role === 'Supplier' ? '供货商' : '客户'}已删除`);
             } else {
                 const err = await res.json();
                 toast.error('删除失败', { description: err.error || '服务器拒绝了请求，请检查权限' });
@@ -258,18 +262,19 @@ export const DataProvider = ({ children }) => {
     };
 
     const exportCustomersToCSV = () => {
-        const headers = ['ID', '姓名', '电话', '地址', '账户余额', '状态'];
+        const headers = ['ID', '姓名', '电话', '地址', '账户余额', '状态', '类型'];
         const rows = customers.map(c => ({
             'ID': c.id,
             '姓名': c.name,
             '电话': c.phone,
             '地址': c.address || '',
             '账户余额': c.balance,
-            '状态': c.status === 'Active' ? '活跃' : '停用'
+            '状态': c.status === 'Active' ? '活跃' : '停用',
+            '类型': c.role === 'Supplier' ? '供货商' : '客户'
         }));
 
-        const csvContent = Papa.unparse({ fields: headers, data: rows });
-        downloadCSV(csvContent, `客户名录_${new Date().toLocaleDateString()}.csv`);
+        const csvContent = Papa.unparse({ headers, data: rows });
+        downloadCSV(csvContent, `往来单位名录_${new Date().toLocaleDateString()}.csv`);
     };
 
     const exportTransactionDetailsToCSV = () => {
@@ -294,14 +299,14 @@ export const DataProvider = ({ children }) => {
     };
 
     const downloadCustomerTemplate = () => {
-        const headers = ['ID', '姓名', '电话', '地址', '账户余额', '状态'];
-        const exampleRow = ['', '张三', '13800138000', '上海市浦东新区', '500.00', '活跃'];
+        const headers = ['ID', '姓名', '电话', '地址', '账户余额', '状态', '类型'];
+        const exampleRow = ['', '张三', '13800138000', '上海市浦东新区', '500.00', '活跃', '客户'];
         const formatRow = (row) => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(",");
         const csvContent = [headers, exampleRow].map(formatRow).join("\n");
-        downloadCSV(csvContent, '客户导入模板.csv');
+        downloadCSV(csvContent, '导入模板.csv');
     };
 
-    const importCustomersFromCSV = async (file) => {
+    const importCustomersFromCSV = async (file, defaultRole = 'Customer') => {
         Papa.parse(file, {
             header: true,
             skipEmptyLines: true,
@@ -311,11 +316,14 @@ export const DataProvider = ({ children }) => {
                 let failCount = 0;
 
                 for (const item of data) {
-                    const name = item['姓名'];
-                    const phone = item['电话'];
-                    const address = item['地址'];
-                    const balance = item['账户余额'];
-                    const status = item['状态'];
+                    const name = item['姓名'] || item['Name'] || item['name'];
+                    const phone = item['电话'] || item['Phone'] || item['phone'];
+                    const address = item['地址'] || item['Address'] || item['address'];
+                    const balance = item['账户余额'] || item['Balance'] || 0;
+                    const statusText = item['状态'] || item['Status'];
+                    const roleText = item['类型'] || item['Role'] || defaultRole;
+
+                    const role = (roleText === '供货商' || roleText === 'Supplier') ? 'Supplier' : 'Customer';
 
                     if (name && phone) {
                         try {
@@ -327,7 +335,8 @@ export const DataProvider = ({ children }) => {
                                     address: address || '',
                                     email: '',
                                     balance: parseFloat(balance || 0),
-                                    status: status === '活跃' ? 'Active' : 'Inactive'
+                                    status: statusText === '活跃' || statusText === 'Active' ? 'Active' : 'Inactive',
+                                    role
                                 })
                             });
                             if (res.ok) successCount++;
@@ -339,12 +348,12 @@ export const DataProvider = ({ children }) => {
                 }
 
                 // Refresh data
-                const custRes = await fetch(`${API_BASE_URL}/api/customers`);
+                const custRes = await fetchWithAuth(`${API_BASE_URL}/api/customers`);
                 if (custRes.ok) setCustomers(await custRes.json());
 
                 if (successCount > 0) {
-                    toast.success(`成功导入 ${successCount} 个客户`, {
-                        description: failCount > 0 ? `失败 ${failCount} 个` : undefined
+                    toast.success(`成功导入 ${successCount} 条记录`, {
+                        description: failCount > 0 ? `失败 ${failCount} 条` : undefined
                     });
                 } else if (failCount > 0) {
                     toast.error('导入失败，请检查文件格式');
@@ -395,9 +404,16 @@ export const DataProvider = ({ children }) => {
 
     // --- Stats ---
     const getStats = () => {
-        const currentYear = new Date().getFullYear();
+        const now = new Date();
+        const currentYear = now.getFullYear();
         const lastYear = currentYear - 1;
+        const currentMonth = now.getMonth();
+        const currentMonthYear = now.getFullYear();
 
+        const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+        const lastMonthYear = currentMonth === 0 ? currentMonthYear - 1 : currentMonthYear;
+
+        // 1. Annual Revenue (YoY)
         const getRevenueForYear = (year) => {
             return transactions
                 .filter(t => t.type === 'Income' && t.status === 'Completed' && new Date(t.date).getFullYear() === year)
@@ -407,20 +423,68 @@ export const DataProvider = ({ children }) => {
         const thisYearRevenue = getRevenueForYear(currentYear);
         const lastYearRevenue = getRevenueForYear(lastYear);
 
-        let growthRate = 0;
-        if (lastYearRevenue > 0) {
-            growthRate = ((thisYearRevenue - lastYearRevenue) / lastYearRevenue) * 100;
-        } else if (thisYearRevenue > 0) {
-            growthRate = 100;
-        }
+        let revGrowthRate = 0;
+        if (lastYearRevenue > 0) revGrowthRate = ((thisYearRevenue - lastYearRevenue) / lastYearRevenue) * 100;
+        else if (thisYearRevenue > 0) revGrowthRate = 100;
+        const revenueGrowth = (revGrowthRate >= 0 ? "+" : "") + revGrowthRate.toFixed(1) + "%";
 
-        const growth = (growthRate > 0 ? "+" : "") + growthRate.toFixed(1) + "%";
+        // 2. Transaction Count (MoM)
+        const getOrdersForMonth = (month, year) => {
+            return transactions.filter(t => {
+                const d = new Date(t.date);
+                return d.getMonth() === month && d.getFullYear() === year;
+            }).length;
+        };
+
+        const thisMonthOrders = getOrdersForMonth(currentMonth, currentMonthYear);
+        const lastMonthOrders = getOrdersForMonth(lastMonth, lastMonthYear);
+
+        let ordGrowthRate = 0;
+        if (lastMonthOrders > 0) ordGrowthRate = ((thisMonthOrders - lastMonthOrders) / lastMonthOrders) * 100;
+        else if (thisMonthOrders > 0) ordGrowthRate = 100;
+        const orderGrowth = (ordGrowthRate >= 0 ? "+" : "") + ordGrowthRate.toFixed(1) + "%";
+
+        // 3. Asset Balance (MoM Trend)
+        // Here we compare net profit of this month vs last month
+        const getNetProfitForMonth = (month, year) => {
+            return transactions
+                .filter(t => {
+                    const d = new Date(t.date);
+                    return d.getMonth() === month && d.getFullYear() === year && t.status === 'Completed';
+                })
+                .reduce((acc, curr) => curr.type === 'Income' ? acc + curr.amount : acc - curr.amount, 0);
+        };
+
+        const thisMonthNet = getNetProfitForMonth(currentMonth, currentMonthYear);
+        const lastMonthNet = getNetProfitForMonth(lastMonth, lastMonthYear);
+
+        let balGrowthRate = 0;
+        if (lastMonthNet !== 0) balGrowthRate = ((thisMonthNet - lastMonthNet) / Math.abs(lastMonthNet)) * 100;
+        else if (thisMonthNet !== 0) balGrowthRate = 100;
+        const balanceGrowth = (balGrowthRate >= 0 ? "+" : "") + balGrowthRate.toFixed(1) + "%";
+
+        // 4. Active Customers (MoM)
+        const activeCusts = customers.filter(c => c.status === 'Active' && c.role !== 'Supplier');
+        const getNewActiveCustsForMonth = (month, year) => {
+            return activeCusts.filter(c => {
+                const d = new Date(c.created_at);
+                return d.getMonth() === month && d.getFullYear() === year;
+            }).length;
+        };
+
+        const thisMonthNewCusts = getNewActiveCustsForMonth(currentMonth, currentMonthYear);
+        const lastMonthNewCusts = getNewActiveCustsForMonth(lastMonth, lastMonthYear);
+        const customerGrowth = (thisMonthNewCusts >= lastMonthNewCusts ? "+" : "") + (thisMonthNewCusts - lastMonthNewCusts);
 
         return {
             totalRevenue: thisYearRevenue,
+            revenueGrowth,
             totalOrders: transactions.length,
-            activeCustomers: customers.filter(c => c.status === 'Active').length,
-            growth
+            orderGrowth,
+            activeCustomers: activeCusts.length,
+            customerGrowth,
+            balanceGrowth,
+            netProfit: transactions.reduce((acc, curr) => curr.type === 'Income' ? acc + curr.amount : acc - curr.amount, 0)
         };
     };
 

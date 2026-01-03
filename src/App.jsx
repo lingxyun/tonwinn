@@ -14,6 +14,7 @@ import Settings from './pages/Settings';
 import { DataProvider } from './context/DataContext';
 import Login from './pages/Login';
 import Categories from './pages/Categories';
+import Suppliers from './pages/Suppliers';
 import { Toaster } from 'sonner';
 
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -53,6 +54,7 @@ function App() {
               }>
                 <Route index element={<Dashboard />} />
                 <Route path="customers" element={<Customers />} />
+                <Route path="suppliers" element={<Suppliers />} />
                 <Route path="orders" element={<Orders />} />
                 <Route path="orders/categories" element={<Categories />} />
                 <Route path="accounts" element={<Accounts />} />

@@ -110,11 +110,11 @@ app.get('/api/customers', (req, res) => {
 
 // Create Customer
 app.post('/api/customers', authenticateToken, (req, res) => {
-    const { name, email, phone, address, balance, status } = req.body;
+    const { name, email, phone, address, balance, status, role } = req.body;
     try {
         const result = db.prepare(
-            'INSERT INTO customers (name, email, phone, address, balance, status) VALUES (?, ?, ?, ?, ?, ?)'
-        ).run(name, email, phone, address, balance || 0, status || 'Active');
+            'INSERT INTO customers (name, email, phone, address, balance, status, role) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        ).run(name, email, phone, address, balance || 0, status || 'Active', role || 'Customer');
 
         const newCustomer = db.prepare('SELECT * FROM customers WHERE id = ?').get(result.lastInsertRowid);
 
@@ -130,11 +130,11 @@ app.post('/api/customers', authenticateToken, (req, res) => {
 
 // Update Customer
 app.put('/api/customers/:id', authenticateToken, (req, res) => {
-    const { name, email, phone, address, balance, status } = req.body;
+    const { name, email, phone, address, balance, status, role } = req.body;
     try {
         db.prepare(
-            'UPDATE customers SET name = ?, email = ?, phone = ?, address = ?, balance = ?, status = ? WHERE id = ?'
-        ).run(name, email, phone, address, balance, status, req.params.id);
+            'UPDATE customers SET name = ?, email = ?, phone = ?, address = ?, balance = ?, status = ?, role = ? WHERE id = ?'
+        ).run(name, email, phone, address, balance, status, role || 'Customer', req.params.id);
 
         const updated = db.prepare('SELECT * FROM customers WHERE id = ?').get(req.params.id);
 

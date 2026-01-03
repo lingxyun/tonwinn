@@ -198,10 +198,39 @@ const Dashboard = () => {
 
             {/* Metrics Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                <StatCard index={0} title="年度总营收" value={`¥${contextStats?.totalRevenue || 0} `} change={contextStats?.growth || "+0%"} icon={DollarSign} trend="up" label="较去年" />
-                <StatCard index={1} title="预计资产结余" value={netProfit} change="+0%" icon={Activity} trend={netProfit >= 0 ? "up" : "down"} />
-                <StatCard index={2} title="累计单据总数" value={contextStats?.totalOrders || 0} change="+0%" icon={ShoppingBag} trend="up" />
-                <StatCard index={3} title="当前活跃客户" value={contextStats?.activeCustomers || 0} change="+0" icon={Users} trend="up" />
+                <StatCard
+                    index={0}
+                    title="年度总营收"
+                    value={`¥${contextStats?.totalRevenue || 0} `}
+                    change={contextStats?.revenueGrowth || "+0%"}
+                    icon={DollarSign}
+                    trend={(contextStats?.revenueGrowth || "+").startsWith('+') ? "up" : "down"}
+                    label="较去年"
+                />
+                <StatCard
+                    index={1}
+                    title="预计资产结余"
+                    value={contextStats?.netProfit || 0}
+                    change={contextStats?.balanceGrowth || "+0%"}
+                    icon={Activity}
+                    trend={(contextStats?.balanceGrowth || "+").startsWith('+') ? "up" : "down"}
+                />
+                <StatCard
+                    index={2}
+                    title="累计单据总数"
+                    value={contextStats?.totalOrders || 0}
+                    change={contextStats?.orderGrowth || "+0%"}
+                    icon={ShoppingBag}
+                    trend={(contextStats?.orderGrowth || "+").startsWith('+') ? "up" : "down"}
+                />
+                <StatCard
+                    index={3}
+                    title="当前活跃客户"
+                    value={contextStats?.activeCustomers || 0}
+                    change={contextStats?.customerGrowth || "+0"}
+                    icon={Users}
+                    trend={(contextStats?.customerGrowth || "+").startsWith('+') ? "up" : "down"}
+                />
             </div>
 
             {/* Analysis Grid Section */}
@@ -342,7 +371,7 @@ const Dashboard = () => {
                                     <Tooltip
                                         contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: '15px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
                                     />
-                                    <Area type="step" dataKey="amount" stroke="#10b981" strokeWidth={3} fill="url(#colorWeekly)" />
+                                    <Area type="monotone" dataKey="amount" stroke="#10b981" strokeWidth={3} fill="url(#colorWeekly)" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>

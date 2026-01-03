@@ -18,6 +18,7 @@ export const AuthProvider = ({ children }) => {
         const saved = localStorage.getItem('user');
         return saved ? JSON.parse(saved) : null;
     });
+    const [token, setToken] = useState(() => localStorage.getItem('token') || null);
 
     const login = async (username, password) => {
         try {
@@ -29,13 +30,12 @@ export const AuthProvider = ({ children }) => {
 
             if (res.ok) {
                 const data = await res.json();
-                const { token, ...userData } = data;
+                const { token: newToken, ...userData } = data;
                 setUser(userData);
+                setToken(newToken);
                 localStorage.setItem('user', JSON.stringify(userData));
-                if (token) {
-                    localStorage.setItem('token', token);
-                    // Trigger a storage event or just rely on state if they share the same context
-                    // For now, reload or manual state sync is needed if they are separate
+                if (newToken) {
+                    localStorage.setItem('token', newToken);
                 }
                 toast.success('登录成功', { description: `欢迎回来, ${data.username}` });
                 return true;
@@ -57,13 +57,14 @@ export const AuthProvider = ({ children }) => {
 
     const logout = () => {
         setUser(null);
+        setToken(null);
         localStorage.removeItem('user');
         localStorage.removeItem('token');
         toast.info('您已退出登录');
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
+        <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!user }}>
             {children}
         </AuthContext.Provider>
     );

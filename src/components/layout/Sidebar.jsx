@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, Settings, CreditCard, Sun, Moon, LogOut, ChevronLeft, ChevronRight, ChevronDown, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, CreditCard, Sun, Moon, LogOut, ChevronLeft, ChevronRight, ChevronDown, Menu, X, Truck } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
@@ -19,6 +19,7 @@ const Sidebar = ({ isDarkMode, toggleTheme, isCollapsed, setIsCollapsed }) => {
     const navItems = [
         { icon: LayoutDashboard, label: '概览', to: '/' },
         { icon: Users, label: '客户管理', to: '/customers' },
+        { icon: Truck, label: '供货商管理', to: '/suppliers' },
         {
             icon: FileText,
             label: '订单管理',

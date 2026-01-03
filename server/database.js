@@ -26,6 +26,7 @@ export function initDb() {
         phone TEXT NOT NULL,
         balance REAL DEFAULT 0,
         status TEXT DEFAULT 'Active',
+        role TEXT DEFAULT 'Customer',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
         `).run();
@@ -33,9 +34,11 @@ export function initDb() {
     // Migration for address column
     try {
         db.prepare("ALTER TABLE customers ADD COLUMN address TEXT").run();
-    } catch (error) {
-        // Column likely already exists
-    }
+    } catch (error) { }
+
+    try {
+        db.prepare("ALTER TABLE customers ADD COLUMN role TEXT DEFAULT 'Customer'").run();
+    } catch (error) { }
 
     // Create Transactions Table
     db.prepare(`

@@ -42,7 +42,10 @@ const Customers = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const filteredCustomers = customerList.filter(c =>
+    // Strictly separate customers from suppliers
+    const customerOnlyList = (customerList || []).filter(c => c.role === 'Customer' || !c.role);
+
+    const filteredCustomers = customerOnlyList.filter(c =>
         c.name.includes(searchTerm) ||
         (c.address && c.address.includes(searchTerm)) ||
         c.phone.includes(searchTerm)
@@ -50,9 +53,9 @@ const Customers = () => {
 
     const handleAddOrUpdateCustomer = (data) => {
         if (editingCustomer) {
-            updateCustomer({ ...data, id: editingCustomer.id });
+            updateCustomer({ ...data, id: editingCustomer.id, role: 'Customer' });
         } else {
-            addCustomer(data);
+            addCustomer(data, 'Customer');
         }
         closeModal();
     };
@@ -129,7 +132,7 @@ const Customers = () => {
                         ref={fileInputRef}
                         onChange={(e) => {
                             if (e.target.files?.[0]) {
-                                importCustomersFromCSV(e.target.files[0]);
+                                importCustomersFromCSV(e.target.files[0], 'Customer');
                                 e.target.value = ''; // Reset
                             }
                         }}
@@ -248,40 +251,23 @@ const Customers = () => {
                                                 customer.status === 'Inactive' ? '未激活' : '已停用'}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-right relative">
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setActiveMenuId(activeMenuId === customer.id ? null : customer.id);
-                                            }}
-                                            className={cn(
-                                                "p-2 rounded-lg transition-colors",
-                                                activeMenuId === customer.id ? "bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
-                                            )}
-                                        >
-                                            <MoreHorizontal className="w-4 h-4" />
-                                        </button>
-
-                                        {/* Dropdown Menu */}
-                                        {activeMenuId === customer.id && (
-                                            <div
-                                                ref={menuRef}
-                                                className="absolute right-8 top-10 w-32 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-100 dark:border-slate-800 z-10 py-1"
+                                    <td className="px-6 py-4 text-right">
+                                        <div className="flex justify-end gap-1">
+                                            <button
+                                                onClick={() => openEditModal(customer)}
+                                                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-all text-slate-500 hover:text-primary"
+                                                title="编辑"
                                             >
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); openEditModal(customer); }}
-                                                    className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2"
-                                                >
-                                                    <Edit className="w-4 h-4" /> 编辑
-                                                </button>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleDeleteCustomer(customer.id, customer.name); }}
-                                                    className="w-full text-left px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 flex items-center gap-2"
-                                                >
-                                                    <Trash2 className="w-4 h-4" /> 删除
-                                                </button>
-                                            </div>
-                                        )}
+                                                <Edit className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteCustomer(customer.id, customer.name)}
+                                                className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-md transition-all text-slate-400 hover:text-rose-600"
+                                                title="删除"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
