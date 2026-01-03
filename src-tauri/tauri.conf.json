@@ -23,6 +23,13 @@
       "csp": null
     }
   },
+  "plugins": {
+    "sql": {
+      "dbs": [
+        "sqlite:financial.db"
+      ]
+    }
+  },
   "bundle": {
     "active": true,
     "targets": [

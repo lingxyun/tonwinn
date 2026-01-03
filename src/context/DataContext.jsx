@@ -9,6 +9,7 @@ const DataContext = createContext();
 
 // --- Constants ---
 const DB_READY_DELAY = 100;
+const isTauri = !!window.__TAURI_INTERNALS__;
 
 export const useData = () => {
     const context = useContext(DataContext);
@@ -41,16 +42,23 @@ export const DataProvider = ({ children }) => {
                 setLoading(false);
             } catch (error) {
                 console.error(`Fetch attempt failed (${retries} retries left):`, error);
-                if (retries > 0) {
+                if (retries > 0 && isTauri) {
                     // Wait 500ms before retrying
                     setTimeout(() => fetchData(retries - 1), 500);
                 } else {
-                    toast.error('初始化数据库失败，请尝试重启软件');
+                    if (!isTauri) {
+                        toast.error('检测到正在浏览器运行，本地数据库需在桌面软件中启动', {
+                            description: '请通过 npm run tauri dev 或启动构建后的 .exe 使用本地版',
+                            duration: 10000
+                        });
+                    } else {
+                        toast.error('初始化数据库失败，请尝试重启软件');
+                    }
                     setLoading(false);
                 }
             }
         };
-        fetchData();
+        fetchData(isTauri ? 3 : 0);
     }, []);
 
     const refreshData = async () => {
