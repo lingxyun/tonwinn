@@ -32,7 +32,7 @@
     },
     "updater": {
       "endpoints": [
-        "https://raw.githubusercontent.com/lingxyun/tonwinn/main-tauri/update.json"
+        "https://gitee.com/wx_3a9051a7ee/tonwinn/raw/main-tauri/update.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdGOUFDRTA1OEU5NTVCRjMKUldUelc1V09CYzZhZjlIWCtRRDRJWXNBOVYzS2xOWXlPSDFoa2YrQnF0aFZHTW1PTEVQOXFWS2oKS0dtZ2s4WHdsZSt4VjBNdk09Cg=="
     },
