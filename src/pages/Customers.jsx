@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, MoreHorizontal, Phone, MapPin, Trash2, Edit, Download, Upload, FileSpreadsheet, FileText, ChevronDown, RotateCcw } from 'lucide-react';
+import { Search, Plus, MoreHorizontal, Phone, MapPin, Trash2, Edit, Download, Upload, FileSpreadsheet, FileText, ChevronDown, RotateCcw, ArrowLeft, Calendar } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import { ask } from '@tauri-apps/plugin-dialog';
@@ -30,6 +30,7 @@ const Customers = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState(null);
     const [activeMenuId, setActiveMenuId] = useState(null);
+    const [selectedCustomer, setSelectedCustomer] = useState(null);
     const [isDataMenuOpen, setIsDataMenuOpen] = useState(false);
     const menuRef = useRef(null);
     const dataMenuRef = useRef(null);
@@ -96,9 +97,123 @@ const Customers = () => {
         setEditingCustomer(null);
     };
 
+    // Detail View
+    if (selectedCustomer) {
+        const customerTx = transactions.filter(t => t.customerId === selectedCustomer.id).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        return (
+            <div className="space-y-6">
+                {/* Header & Back Button */}
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => setSelectedCustomer(null)}
+                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+                            {selectedCustomer.name}
+                            {selectedCustomer.categoryId && (
+                                <span className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-medium border border-blue-100 dark:border-blue-800/50">
+                                    {categories.find(cat => cat.id === selectedCustomer.categoryId)?.name}
+                                </span>
+                            )}
+                        </h1>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+                            ID: #{selectedCustomer.id.toString().padStart(4, '0')} · {selectedCustomer.phone}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Info Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                        <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">账户余额</div>
+                        <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
+                            ¥{selectedCustomer.balance?.toFixed(2) || '0.00'}
+                        </div>
+                    </div>
+                    <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                        <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">总交易次数</div>
+                        <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                            {customerTx.length} <span className="text-sm font-normal text-slate-500">笔</span>
+                        </div>
+                    </div>
+                    <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                        <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">地址信息</div>
+                        <div className="text-slate-900 dark:text-white text-sm">
+                            {selectedCustomer.address || <span className="text-slate-400 italic">未录入地址</span>}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Transactions List */}
+                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+                    <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex justify-between items-center">
+                        <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <FileSpreadsheet className="w-4 h-4 text-slate-400" />
+                            交易记录
+                        </h3>
+                    </div>
+
+                    {customerTx.length > 0 ? (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs uppercase font-medium">
+                                    <tr>
+                                        <th className="px-6 py-3">订单号</th>
+                                        <th className="px-6 py-3">日期</th>
+                                        <th className="px-6 py-3">描述</th>
+                                        <th className="px-6 py-3">类型</th>
+                                        <th className="px-6 py-3 text-right">金额</th>
+                                        <th className="px-6 py-3">状态</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                    {customerTx.map(tx => (
+                                        <tr key={tx.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                                            <td className="px-6 py-3 font-medium text-slate-900 dark:text-slate-100">#{tx.id}</td>
+                                            <td className="px-6 py-3 text-slate-500">{tx.date}</td>
+                                            <td className="px-6 py-3 text-slate-600 dark:text-slate-400">{tx.description}</td>
+                                            <td className="px-6 py-3">
+                                                <span className={cn(
+                                                    "px-2 py-0.5 rounded-full text-xs font-medium",
+                                                    tx.type === 'Income' ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400" : "bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400"
+                                                )}>
+                                                    {tx.type === 'Income' ? '收入' : '支出'}
+                                                </span>
+                                            </td>
+                                            <td className={cn(
+                                                "px-6 py-3 text-right font-medium font-mono",
+                                                tx.type === 'Income' ? "text-emerald-600" : "text-slate-900 dark:text-slate-100"
+                                            )}>
+                                                {tx.type === 'Income' ? '+' : '-'} ¥{tx.amount.toFixed(2)}
+                                            </td>
+                                            <td className="px-6 py-3">
+                                                <span className={cn(
+                                                    "inline-flex items-center text-xs px-2 py-0.5 rounded-full border",
+                                                    tx.status === 'Completed' ? "bg-green-50 text-green-700 border-green-100 dark:bg-green-900/20 dark:border-green-900/30 dark:text-green-400" : "bg-amber-50 text-amber-700 border-amber-100"
+                                                )}>
+                                                    {tx.status === 'Completed' ? '已完成' : '处理中'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="p-8 text-center text-slate-400 text-sm">
+                            该客户暂无交易记录
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white">客户管理</h1>
                     <p className="text-slate-500 dark:text-slate-400 mt-1">管理客户信息和账户余额</p>
@@ -239,7 +354,7 @@ const Customers = () => {
                                     key={customer.id}
                                     className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group relative"
                                 >
-                                    <td className="px-6 py-4" onClick={() => navigate(`/orders?customerId=${customer.id}`)}>
+                                    <td className="px-6 py-4" onClick={() => setSelectedCustomer(customer)}>
                                         <div className="flex items-center gap-3 cursor-pointer group/name">
                                             <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 font-bold shrink-0">
                                                 {customer.name.charAt(0)}
@@ -366,7 +481,7 @@ const Customers = () => {
 
                             <div className="flex gap-2 pt-2">
                                 <button
-                                    onClick={() => navigate(`/orders?customerId=${customer.id}`)}
+                                    onClick={() => setSelectedCustomer(customer)}
                                     className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg text-sm font-medium"
                                 >
                                     <FileSpreadsheet className="w-4 h-4" />
