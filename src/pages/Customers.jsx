@@ -59,7 +59,12 @@ const Customers = () => {
             c.phone.includes(searchTerm);
 
         const matchesCategory = selectedCategory === 'all' ||
-            (selectedCategory === 'none' ? !c.categoryId : c.categoryId === parseInt(selectedCategory));
+            (selectedCategory === 'none'
+                ? (!c.categoryIds || JSON.parse(c.categoryIds || '[]').length === 0) && !c.categoryId
+                : (c.categoryIds
+                    ? JSON.parse(c.categoryIds || '[]').includes(parseInt(selectedCategory))
+                    : c.categoryId === parseInt(selectedCategory))
+            );
 
         return matchesSearch && matchesCategory;
     });
@@ -114,11 +119,18 @@ const Customers = () => {
                     <div>
                         <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
                             {selectedCustomer.name}
-                            {selectedCustomer.categoryId && (
-                                <span className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-medium border border-blue-100 dark:border-blue-800/50">
-                                    {categories.find(cat => cat.id === selectedCustomer.categoryId)?.name}
-                                </span>
-                            )}
+                            {(() => {
+                                const ids = selectedCustomer.categoryIds ? JSON.parse(selectedCustomer.categoryIds) : (selectedCustomer.categoryId ? [selectedCustomer.categoryId] : []);
+                                return ids.map(id => {
+                                    const cat = categories.find(c => c.id === id);
+                                    if (!cat) return null;
+                                    return (
+                                        <span key={id} className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-medium border border-blue-100 dark:border-blue-800/50">
+                                            {cat.name}
+                                        </span>
+                                    );
+                                });
+                            })()}
                         </h1>
                         <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
                             ID: #{selectedCustomer.id.toString().padStart(4, '0')} · {selectedCustomer.phone}
@@ -372,13 +384,27 @@ const Customers = () => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        {customer.categoryId ? (
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-100 dark:border-blue-800">
-                                                {categories.find(cat => cat.id === customer.categoryId)?.name || '未知类别'}
-                                            </span>
-                                        ) : (
-                                            <span className="text-xs text-slate-400 italic">未分类</span>
-                                        )}
+                                        <div className="flex flex-wrap gap-1">
+                                            {(() => {
+                                                const ids = customer.categoryIds
+                                                    ? JSON.parse(customer.categoryIds || '[]')
+                                                    : (customer.categoryId ? [customer.categoryId] : []);
+
+                                                if (ids.length === 0) {
+                                                    return <span className="text-xs text-slate-400 italic">未分类</span>;
+                                                }
+
+                                                return ids.map(id => {
+                                                    const cat = categories.find(c => c.id === id);
+                                                    if (!cat) return null;
+                                                    return (
+                                                        <span key={id} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-100 dark:border-blue-800">
+                                                            {cat.name}
+                                                        </span>
+                                                    );
+                                                });
+                                            })()}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="space-y-1">

@@ -1,16 +1,38 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { ChevronDown, Check, X } from 'lucide-react';
 
 const CustomerForm = ({ onSubmit, onCancel, initialData = null, isSupplier = false, categories = [] }) => {
-    const [formData, setFormData] = useState(initialData || {
+    const [formData, setFormData] = useState(initialData ? {
+        ...initialData,
+        // Normalize categoryIds: if array, use it; if string, parse it; if old ID, wrap it; else empty
+        categoryIds: Array.isArray(initialData.categoryIds)
+            ? initialData.categoryIds
+            : (typeof initialData.categoryIds === 'string'
+                ? JSON.parse(initialData.categoryIds || '[]')
+                : (initialData.categoryId ? [initialData.categoryId] : []))
+    } : {
         name: '',
         address: '',
         phone: '',
         balance: '0',
         status: 'Active',
         role: isSupplier ? 'Supplier' : 'Customer',
-        categoryId: null
+        categoryIds: []
     });
+
+    const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+    const categoryRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (categoryRef.current && !categoryRef.current.contains(event.target)) {
+                setIsCategoryOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const filteredCategories = categories.filter(cat =>
         isSupplier ? cat.type === 'Expense' : cat.type === 'Income'
@@ -79,19 +101,75 @@ const CustomerForm = ({ onSubmit, onCancel, initialData = null, isSupplier = fal
                 </p>
             </div>
 
-            <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">所属类别</label>
-                <select
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                    value={formData.categoryId || ''}
-                    onChange={e => setFormData({ ...formData, categoryId: e.target.value ? parseInt(e.target.value) : null })}
-                >
-                    <option value="">-- 请选择类别 --</option>
-                    {filteredCategories.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    ))}
-                </select>
-                <p className="text-xs text-slate-500">将{isSupplier ? '供货商' : '客户'}与交易类别关联，便于分类管理。</p>
+            <div className="space-y-2" ref={categoryRef}>
+                <label className="text-sm font-medium text-slate-700">所属类别 (多选)</label>
+                <div className="relative">
+                    <button
+                        type="button"
+                        onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-left flex justify-between items-center"
+                    >
+                        <span className={formData.categoryIds.length === 0 ? "text-slate-400" : "text-slate-900"}>
+                            {formData.categoryIds.length === 0
+                                ? "-- 请选择类别 --"
+                                : `${formData.categoryIds.length} 个已选择`
+                            }
+                        </span>
+                        <ChevronDown className="w-4 h-4 text-slate-500" />
+                    </button>
+
+                    {isCategoryOpen && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto p-1">
+                            {filteredCategories.length === 0 ? (
+                                <div className="px-3 py-2 text-sm text-slate-400 text-center">暂无可用类别</div>
+                            ) : (
+                                filteredCategories.map(cat => {
+                                    const isSelected = formData.categoryIds.includes(cat.id);
+                                    return (
+                                        <div
+                                            key={cat.id}
+                                            onClick={() => {
+                                                const newIds = isSelected
+                                                    ? formData.categoryIds.filter(id => id !== cat.id)
+                                                    : [...formData.categoryIds, cat.id];
+                                                setFormData({ ...formData, categoryIds: newIds });
+                                            }}
+                                            className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50 rounded-md cursor-pointer text-sm"
+                                        >
+                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${isSelected ? "bg-primary border-primary text-white" : "border-slate-300 bg-white"}`}>
+                                                {isSelected && <Check className="w-3 h-3" />}
+                                            </div>
+                                            <span className={isSelected ? "text-slate-900 font-medium" : "text-slate-600"}>{cat.name}</span>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* Selected Tags Display */}
+                {formData.categoryIds.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                        {formData.categoryIds.map(id => {
+                            const cat = categories.find(c => c.id === id);
+                            if (!cat) return null;
+                            return (
+                                <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-xs text-slate-600 border border-slate-200">
+                                    {cat.name}
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData(prev => ({ ...prev, categoryIds: prev.categoryIds.filter(cid => cid !== id) }))}
+                                        className="hover:text-rose-500"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </span>
+                            );
+                        })}
+                    </div>
+                )}
+                <p className="text-xs text-slate-500">可为{isSupplier ? '供货商' : '客户'}关联多个类别，便于交叉管理。</p>
             </div>
 
             <div className="space-y-2">

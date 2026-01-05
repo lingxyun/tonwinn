@@ -88,8 +88,8 @@ export const DataProvider = ({ children }) => {
     const addCustomer = async (customer, role = 'Customer') => {
         try {
             await db.execute(
-                'INSERT INTO customers (name, email, address, phone, balance, status, role, categoryId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                [customer.name, customer.email || '', customer.address || '', customer.phone, customer.balance || 0, 'Active', role, customer.categoryId || null]
+                'INSERT INTO customers (name, email, address, phone, balance, status, role, categoryIds) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [customer.name, customer.email || '', customer.address || '', customer.phone, customer.balance || 0, 'Active', role, JSON.stringify(customer.categoryIds || [])]
             );
             refreshData();
             toast.success(`${role === 'Supplier' ? '供货商' : '客户'}添加成功`);
@@ -102,8 +102,8 @@ export const DataProvider = ({ children }) => {
     const updateCustomer = async (data) => {
         try {
             await db.execute(
-                'UPDATE customers SET name = ?, email = ?, phone = ?, address = ?, balance = ?, status = ?, role = ?, categoryId = ? WHERE id = ?',
-                [data.name, data.email, data.phone, data.address, data.balance, data.status, data.role || 'Customer', data.categoryId || null, data.id]
+                'UPDATE customers SET name = ?, email = ?, phone = ?, address = ?, balance = ?, status = ?, role = ?, categoryIds = ? WHERE id = ?',
+                [data.name, data.email, data.phone, data.address, data.balance, data.status, data.role || 'Customer', JSON.stringify(data.categoryIds || []), data.id]
             );
             setCustomers((prev) =>
                 prev.map((c) => (c.id === data.id ? { ...data, role: data.role || c.role } : c))
@@ -280,7 +280,25 @@ export const DataProvider = ({ children }) => {
     const exportCustomersToCSV = () => {
         const headers = ['ID', '姓名', '电话', '地址', '账户余额', '状态', '类型', '分类'];
         const rows = customers.map(c => {
-            const category = categories.find(cat => cat.id === c.categoryId);
+            let catNames = '';
+            // Handle both old singular categoryId and new array categoryIds
+            if (c.categoryIds) {
+                try {
+                    const ids = JSON.parse(c.categoryIds);
+                    if (Array.isArray(ids)) {
+                        catNames = ids.map(id => categories.find(cat => cat.id === id)?.name).filter(Boolean).join(', ');
+                    } else {
+                        // Fallback for single ID stored as string
+                        catNames = categories.find(cat => cat.id == ids)?.name || '';
+                    }
+                } catch (e) {
+                    // Fallback for raw string
+                    catNames = categories.find(cat => cat.id == c.categoryIds)?.name || '';
+                }
+            } else if (c.categoryId) {
+                catNames = categories.find(cat => cat.id === c.categoryId)?.name || '';
+            }
+
             return {
                 'ID': c.id,
                 '姓名': c.name,
@@ -289,7 +307,7 @@ export const DataProvider = ({ children }) => {
                 '账户余额': c.balance,
                 '状态': c.status === 'Active' ? '活跃' : '停用',
                 '类型': c.role === 'Supplier' ? '供货商' : '客户',
-                '分类': category ? category.name : ''
+                '分类': catNames
             };
         });
 
@@ -396,19 +414,18 @@ export const DataProvider = ({ children }) => {
 
                     if (name && phone) {
                         try {
-                            // Try to find category id by name
-                            const categoryName = item['分类'] || item['Category'];
-                            let categoryId = null;
-                            if (categoryName) {
-                                const category = categories.find(cat => cat.name === categoryName);
-                                if (category) {
-                                    categoryId = category.id;
-                                }
-                            }
+                            // Try to find category ids by name (comma separated)
+                            const categoryNames = (item['分类'] || item['Category'] || '').split(/[,，、]/).map(s => s.trim()).filter(Boolean);
+                            let categoryIds = [];
+
+                            categoryNames.forEach(cName => {
+                                const cat = categories.find(c => c.name === cName);
+                                if (cat) categoryIds.push(cat.id);
+                            });
 
                             await db.execute(
-                                'INSERT INTO customers (name, phone, address, email, balance, status, role, categoryId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                                [name, phone, address || '', '', balance, statusText === '活跃' || statusText === 'Active' ? 'Active' : 'Inactive', role, categoryId]
+                                'INSERT INTO customers (name, phone, address, email, balance, status, role, categoryIds) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                                [name, phone, address || '', '', balance, statusText === '活跃' || statusText === 'Active' ? 'Active' : 'Inactive', role, JSON.stringify(categoryIds)]
                             );
                             successCount++;
                         } catch (err) {
@@ -452,8 +469,8 @@ export const DataProvider = ({ children }) => {
             console.log(`Importing ${data.customers.length} customers...`);
             for (const cust of data.customers) {
                 await db.execute(
-                    'INSERT INTO customers (id, name, email, phone, address, balance, status, created_at, role, categoryId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                    [cust.id, cust.name, cust.email || '', cust.phone, cust.address || '', cust.balance || 0, cust.status || 'Active', cust.created_at || new Date().toISOString(), cust.role || 'Customer', cust.categoryId || null]
+                    'INSERT INTO customers (id, name, email, phone, address, balance, status, created_at, role, categoryIds) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [cust.id, cust.name, cust.email || '', cust.phone, cust.address || '', cust.balance || 0, cust.status || 'Active', cust.created_at || new Date().toISOString(), cust.role || 'Customer', cust.categoryIds || (cust.categoryId ? JSON.stringify([cust.categoryId]) : '[]')]
                 );
             }
 
