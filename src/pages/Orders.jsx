@@ -79,6 +79,21 @@ const Orders = () => {
     // Unique Categories for Filter Dropdown
     const categories = Array.from(new Set(txList.map(tx => tx.category).filter(Boolean)));
 
+    // Dashboard Stats Logic
+    const todayStr = new Date().toISOString().split('T')[0];
+    const currentMonthStr = todayStr.substring(0, 7);
+
+    const todayStats = {
+        income: filteredTx.filter(t => t.date === todayStr && t.type === 'Income').reduce((sum, t) => sum + t.amount, 0),
+        count: filteredTx.filter(t => t.date === todayStr).length
+    };
+
+    // Pending items in the current filtered view (regardless of date, or maybe restrict to current month if volume is high? 
+    // User asked for "Month's Outstanding", so let's filter by current month AND pending)
+    const pendingAmount = filteredTx
+        .filter(t => t.date.startsWith(currentMonthStr) && t.status === 'Pending')
+        .reduce((sum, t) => sum + t.amount, 0);
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -136,6 +151,45 @@ const Orders = () => {
                         <Plus className="w-4 h-4" />
                         新建交易
                     </button>
+                </div>
+            </div>
+
+            {/* Mini Dashboard */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/20 flex items-center justify-between">
+                    <div>
+                        <div className="text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">今日收款</div>
+                        <div className="text-2xl font-black text-emerald-700 dark:text-emerald-300 font-mono mt-1">
+                            <span className="text-sm mr-1">¥</span>{todayStats.income.toFixed(2)}
+                        </div>
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-800/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                        <span className="font-bold text-lg">今</span>
+                    </div>
+                </div>
+
+                <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-xl border border-amber-100 dark:border-amber-900/20 flex items-center justify-between">
+                    <div>
+                        <div className="text-amber-600 dark:text-amber-400 text-xs font-bold uppercase tracking-wider">本月待结清</div>
+                        <div className="text-2xl font-black text-amber-700 dark:text-amber-300 font-mono mt-1">
+                            <span className="text-sm mr-1">¥</span>{pendingAmount.toFixed(2)}
+                        </div>
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-800/30 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                        <span className="font-bold text-lg">待</span>
+                    </div>
+                </div>
+
+                <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-100 dark:border-blue-900/20 flex items-center justify-between">
+                    <div>
+                        <div className="text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-wider">今日单量</div>
+                        <div className="text-2xl font-black text-blue-700 dark:text-blue-300 font-mono mt-1">
+                            {todayStats.count} <span className="text-sm font-medium text-blue-500/80">笔</span>
+                        </div>
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-800/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                        <FileText className="w-5 h-5" />
+                    </div>
                 </div>
             </div>
 
@@ -240,7 +294,7 @@ const Orders = () => {
                                 <th className="px-6 py-4">类别</th>
                                 <th className="px-6 py-4">日期</th>
                                 <th className="px-6 py-4 text-right">金额</th>
-                                <th className="px-6 py-4">状态</th>
+                                <th className="px-6 py-4 text-center">状态</th>
                                 <th className="px-6 py-4 text-right">操作</th>
                             </tr>
                         </thead>
@@ -254,14 +308,14 @@ const Orders = () => {
                                         onClick={() => toast.info(`交易详情: ${tx.id}`, { description: tx.description })}
                                     >
                                         <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-slate-100">{tx.id}</td>
-                                        <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{tx.description}</td>
+                                        <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400 max-w-xs truncate" title={tx.description}>{tx.description}</td>
                                         <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
                                             {customer?.name}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={cn(
-                                                "px-2 py-1 rounded-full text-xs font-medium",
-                                                tx.type === 'Income' ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400" : "bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400"
+                                                "px-2.5 py-1 rounded-full text-xs font-bold",
+                                                tx.type === 'Income' ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/10 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30" : "bg-rose-50 text-rose-600 dark:bg-rose-900/10 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30"
                                             )}>
                                                 {tx.type === 'Income' ? '收入' : '支出'}
                                             </span>
@@ -269,22 +323,18 @@ const Orders = () => {
                                         <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{tx.category || '-'}</td>
                                         <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{tx.date}</td>
                                         <td className={cn(
-                                            "px-6 py-4 text-sm font-medium text-right",
+                                            "px-6 py-4 text-lg font-bold font-mono text-right tracking-tight",
                                             tx.type === 'Income' ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-slate-100"
                                         )}>
                                             {tx.type === 'Income' ? '+' : '-'} ¥{tx.amount.toFixed(2)}
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-6 py-4 text-center">
                                             <span className={cn(
-                                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border",
-                                                tx.status === 'Completed' ? "bg-green-50 text-green-700 border-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/30" :
-                                                    tx.status === 'Pending' ? "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/30" :
-                                                        "bg-slate-50 text-slate-600 border-slate-100 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+                                                "inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border shadow-sm",
+                                                tx.status === 'Completed' ? "bg-white text-green-600 border-green-200 dark:bg-green-900/10 dark:text-green-400 dark:border-green-900/30" :
+                                                    tx.status === 'Pending' ? "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/10 dark:text-amber-400 dark:border-amber-900/30" :
+                                                        "bg-slate-50 text-slate-600 border-slate-200"
                                             )}>
-                                                <span className={cn("w-1.5 h-1.5 rounded-full",
-                                                    tx.status === 'Completed' ? "bg-green-500" :
-                                                        tx.status === 'Pending' ? "bg-amber-500" : "bg-slate-400"
-                                                )} />
                                                 {tx.status === 'Completed' ? '已完成' : '处理中'}
                                             </span>
                                         </td>
@@ -325,6 +375,7 @@ const Orders = () => {
                                                     }
                                                 }}
                                                 className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                                title="删除"
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
