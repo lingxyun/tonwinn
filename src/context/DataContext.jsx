@@ -284,13 +284,9 @@ export const DataProvider = ({ children }) => {
             // Handle both old singular categoryId and new array categoryIds
             if (c.categoryIds) {
                 try {
-                    const ids = JSON.parse(c.categoryIds);
-                    if (Array.isArray(ids)) {
-                        catNames = ids.map(id => categories.find(cat => cat.id === id)?.name).filter(Boolean).join(', ');
-                    } else {
-                        // Fallback for single ID stored as string
-                        catNames = categories.find(cat => cat.id == ids)?.name || '';
-                    }
+                    const parsed = JSON.parse(c.categoryIds);
+                    const ids = Array.isArray(parsed) ? parsed : [parsed];
+                    catNames = ids.map(id => categories.find(cat => cat.id === id)?.name).filter(Boolean).join(', ');
                 } catch (e) {
                     // Fallback for raw string
                     catNames = categories.find(cat => cat.id == c.categoryIds)?.name || '';

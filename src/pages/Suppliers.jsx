@@ -59,9 +59,19 @@ const Suppliers = () => {
 
         const matchesCategory = selectedCategory === 'all' ||
             (selectedCategory === 'none'
-                ? (!s.categoryIds || JSON.parse(s.categoryIds || '[]').length === 0) && !s.categoryId
+                ? (!s.categoryIds || (() => {
+                    try {
+                        const p = JSON.parse(s.categoryIds);
+                        return Array.isArray(p) ? p.length === 0 : !p;
+                    } catch { return true; }
+                })()) && !s.categoryId
                 : (s.categoryIds
-                    ? JSON.parse(s.categoryIds || '[]').includes(parseInt(selectedCategory))
+                    ? (() => {
+                        try {
+                            const p = JSON.parse(s.categoryIds || '[]');
+                            return Array.isArray(p) ? p.includes(parseInt(selectedCategory)) : p == parseInt(selectedCategory);
+                        } catch { return false; }
+                    })()
                     : s.categoryId === parseInt(selectedCategory))
             );
 
@@ -119,7 +129,12 @@ const Suppliers = () => {
                         <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
                             {selectedSupplier.name}
                             {(() => {
-                                const ids = selectedSupplier.categoryIds ? JSON.parse(selectedSupplier.categoryIds) : (selectedSupplier.categoryId ? [selectedSupplier.categoryId] : []);
+                                let ids = [];
+                                try {
+                                    const parsed = selectedSupplier.categoryIds ? JSON.parse(selectedSupplier.categoryIds) : (selectedSupplier.categoryId ? [selectedSupplier.categoryId] : []);
+                                    ids = Array.isArray(parsed) ? parsed : [parsed];
+                                } catch (e) { ids = []; }
+
                                 return ids.map(id => {
                                     const cat = categories.find(c => c.id === id);
                                     if (!cat) return null;
@@ -362,9 +377,13 @@ const Suppliers = () => {
                                     <td className="px-6 py-4">
                                         <div className="flex flex-wrap gap-1">
                                             {(() => {
-                                                const ids = supplier.categoryIds
-                                                    ? JSON.parse(supplier.categoryIds || '[]')
-                                                    : (supplier.categoryId ? [supplier.categoryId] : []);
+                                                let ids = [];
+                                                try {
+                                                    const parsed = supplier.categoryIds
+                                                        ? JSON.parse(supplier.categoryIds || '[]')
+                                                        : (supplier.categoryId ? [supplier.categoryId] : []);
+                                                    ids = Array.isArray(parsed) ? parsed : [parsed];
+                                                } catch (e) { ids = []; }
 
                                                 if (ids.length === 0) {
                                                     return <span className="text-xs text-slate-400 italic">未分类</span>;

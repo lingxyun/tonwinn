@@ -60,9 +60,19 @@ const Customers = () => {
 
         const matchesCategory = selectedCategory === 'all' ||
             (selectedCategory === 'none'
-                ? (!c.categoryIds || JSON.parse(c.categoryIds || '[]').length === 0) && !c.categoryId
+                ? (!c.categoryIds || (() => {
+                    try {
+                        const p = JSON.parse(c.categoryIds);
+                        return Array.isArray(p) ? p.length === 0 : !p;
+                    } catch { return true; }
+                })()) && !c.categoryId
                 : (c.categoryIds
-                    ? JSON.parse(c.categoryIds || '[]').includes(parseInt(selectedCategory))
+                    ? (() => {
+                        try {
+                            const p = JSON.parse(c.categoryIds || '[]');
+                            return Array.isArray(p) ? p.includes(parseInt(selectedCategory)) : p == parseInt(selectedCategory);
+                        } catch { return false; }
+                    })()
                     : c.categoryId === parseInt(selectedCategory))
             );
 
@@ -120,7 +130,12 @@ const Customers = () => {
                         <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
                             {selectedCustomer.name}
                             {(() => {
-                                const ids = selectedCustomer.categoryIds ? JSON.parse(selectedCustomer.categoryIds) : (selectedCustomer.categoryId ? [selectedCustomer.categoryId] : []);
+                                let ids = [];
+                                try {
+                                    const parsed = selectedCustomer.categoryIds ? JSON.parse(selectedCustomer.categoryIds) : (selectedCustomer.categoryId ? [selectedCustomer.categoryId] : []);
+                                    ids = Array.isArray(parsed) ? parsed : [parsed];
+                                } catch (e) { ids = []; }
+
                                 return ids.map(id => {
                                     const cat = categories.find(c => c.id === id);
                                     if (!cat) return null;
@@ -386,9 +401,13 @@ const Customers = () => {
                                     <td className="px-6 py-4">
                                         <div className="flex flex-wrap gap-1">
                                             {(() => {
-                                                const ids = customer.categoryIds
-                                                    ? JSON.parse(customer.categoryIds || '[]')
-                                                    : (customer.categoryId ? [customer.categoryId] : []);
+                                                let ids = [];
+                                                try {
+                                                    const parsed = customer.categoryIds
+                                                        ? JSON.parse(customer.categoryIds || '[]')
+                                                        : (customer.categoryId ? [customer.categoryId] : []);
+                                                    ids = Array.isArray(parsed) ? parsed : [parsed];
+                                                } catch (e) { ids = []; }
 
                                                 if (ids.length === 0) {
                                                     return <span className="text-xs text-slate-400 italic">未分类</span>;
