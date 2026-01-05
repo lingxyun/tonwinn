@@ -517,33 +517,26 @@ export const DataProvider = ({ children }) => {
             console.log('Starting data import...');
             const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
 
-            // Handle both flat (legacy) and nested (auto-backup) formats
-            const title = data.title; // Check for standard format
-            const content = data.data || data;
+            let source = null;
 
-            if (!content.customers && !content.transactions) {
-                // Fallback: maybe it IS the content directly? 
-                if (!data.customers && !data.transactions) {
-                    toast.error('无效的备份文件格式');
-                    return;
-                }
+            // 1. Try Legacy Flat Format
+            if (Array.isArray(data.customers) && Array.isArray(data.transactions)) {
+                source = data;
+            }
+            // 2. Try Auto-Backup Nested Format
+            else if (data.data && Array.isArray(data.data.customers) && Array.isArray(data.data.transactions)) {
+                source = data.data;
             }
 
-            const source = content.customers ? content : data;
-
-            if (!source.customers || !source.transactions) {
-                toast.error('无效的备份文件格式');
+            if (!source) {
+                console.error('Invalid backup format. Keys:', Object.keys(data));
+                toast.error('无效的备份文件格式：未找到有效数据');
                 return;
             }
 
             // 1. Clear existing
             await db.execute('DELETE FROM transactions');
             await db.execute('DELETE FROM customers');
-            // Re-create categories if they exist in backup, but current add logic might duplicate or fail if IDs clash? 
-            // The current import logic doesn't import categories! 
-            // Note: The auto backup DOES include categories: `categories: currentCategories`
-            // But importData only handled customers and transactions. 
-            // I should probably add category import too, but first let's fix the structure.
 
             // 2. Insert Customers
             console.log(`Importing ${source.customers.length} customers...`);
