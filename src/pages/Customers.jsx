@@ -153,27 +153,91 @@ const Customers = () => {
                     </div>
                 </div>
 
-                {/* Info Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                        <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">账户余额</div>
-                        <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-                            ¥{selectedCustomer.balance?.toFixed(2) || '0.00'}
+                {/* Stats Logic */}
+                {(() => {
+                    const now = new Date();
+                    const lastTx = customerTx[0];
+                    const lastTxDate = lastTx ? new Date(lastTx.date) : null;
+                    const daysSinceLast = lastTxDate ? Math.floor((now - lastTxDate) / (1000 * 60 * 60 * 24)) : -1;
+
+                    const totalSpent = customerTx.filter(t => t.type === 'Income').reduce((sum, t) => sum + t.amount, 0);
+                    const txCount = customerTx.filter(t => t.type === 'Income').length;
+                    const aov = txCount > 0 ? totalSpent / txCount : 0;
+
+                    // Calculate Top Category
+                    const catMap = {};
+                    customerTx.filter(t => t.type === 'Income').forEach(t => {
+                        catMap[t.category] = (catMap[t.category] || 0) + t.amount;
+                    });
+                    const topCategory = Object.entries(catMap).sort((a, b) => b[1] - a[1])[0];
+
+                    return (
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            {/* Card 1: Balance */}
+                            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group">
+                                <div className="absolute right-0 top-0 w-24 h-24 bg-blue-50 dark:bg-blue-900/10 rounded-full -mr-8 -mt-8 blur-2xl group-hover:bg-blue-100 dark:group-hover:bg-blue-900/20 transition-colors"></div>
+                                <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">当前余额</div>
+                                <div className="text-2xl font-black text-slate-900 dark:text-white font-mono flex items-baseline gap-1">
+                                    <span className="text-sm">¥</span>{selectedCustomer.balance?.toFixed(2) || '0.00'}
+                                </div>
+                            </div>
+
+                            {/* Card 2: Activity */}
+                            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                                <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">最近活跃</div>
+                                <div className="flex items-end justify-between">
+                                    <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                                        {daysSinceLast === -1 ? '无记录' : daysSinceLast === 0 ? '今天' : `${daysSinceLast}天前`}
+                                    </div>
+                                    {daysSinceLast > 30 && (
+                                        <div className="px-2 py-1 bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 text-[10px] font-bold rounded flex items-center gap-1 animate-pulse">
+                                            ⚠️ 流失风险
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="text-xs text-slate-400 mt-1">
+                                    上次交易: {lastTx ? lastTx.date : '—'}
+                                </div>
+                            </div>
+
+                            {/* Card 3: Value (AOV) */}
+                            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                                <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">客户价值</div>
+                                <div className="flex flex-col">
+                                    <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                                        <span className="text-sm text-slate-400 font-sans font-normal mr-1">总</span>¥{totalSpent.toFixed(0)}
+                                    </div>
+                                    <div className="text-xs text-slate-500 mt-1">
+                                        平均客单价: ¥{aov.toFixed(2)}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Card 4: Preference */}
+                            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                                <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">偏好品类</div>
+                                {topCategory ? (
+                                    <div>
+                                        <div className="text-xl font-bold text-slate-900 dark:text-white truncate" title={topCategory[0]}>
+                                            {topCategory[0]}
+                                        </div>
+                                        <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+                                            <div
+                                                className="bg-indigo-500 h-full rounded-full"
+                                                style={{ width: `${Math.min((topCategory[1] / totalSpent) * 100, 100)}%` }}
+                                            />
+                                        </div>
+                                        <div className="text-[10px] text-slate-400 mt-1 text-right">
+                                            占总消费 {((topCategory[1] / totalSpent) * 100).toFixed(0)}%
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="text-slate-400 text-sm italic py-2">暂无偏好数据</div>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                    <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                        <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">总交易次数</div>
-                        <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                            {customerTx.length} <span className="text-sm font-normal text-slate-500">笔</span>
-                        </div>
-                    </div>
-                    <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                        <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">地址信息</div>
-                        <div className="text-slate-900 dark:text-white text-sm">
-                            {selectedCustomer.address || <span className="text-slate-400 italic">未录入地址</span>}
-                        </div>
-                    </div>
-                </div>
+                    );
+                })()}
 
                 {/* Transactions List */}
                 <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
