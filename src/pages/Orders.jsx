@@ -45,6 +45,7 @@ const Orders = () => {
 
     // Filter States
     const [filterType, setFilterType] = useState('All');
+    const [filterStatus, setFilterStatus] = useState('All');
     const [filterCategory, setFilterCategory] = useState('All');
     const [filterCustomer, setFilterCustomer] = useState(searchParams.get('customerId') || 'All');
 
@@ -62,6 +63,7 @@ const Orders = () => {
         const matchesSearch = tx.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
             tx.description.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesType = filterType === 'All' || tx.type === filterType;
+        const matchesStatus = filterStatus === 'All' || tx.status === filterStatus;
         const matchesCategory = filterCategory === 'All' || tx.category === filterCategory;
         const matchesCustomer = filterCustomer === 'All' || tx.customerId === parseInt(filterCustomer);
 
@@ -73,7 +75,7 @@ const Orders = () => {
         if (dateRange.start) matchesDate = matchesDate && tx.date >= dateRange.start;
         if (dateRange.end) matchesDate = matchesDate && tx.date <= dateRange.end;
 
-        return matchesSearch && matchesType && matchesCategory && matchesCustomer && matchesAmount && matchesDate;
+        return matchesSearch && matchesType && matchesStatus && matchesCategory && matchesCustomer && matchesAmount && matchesDate;
     });
 
     // Unique Categories for Filter Dropdown
@@ -215,6 +217,16 @@ const Orders = () => {
                             <option value="All">所有类型</option>
                             <option value="Income">收入</option>
                             <option value="Expense">支出</option>
+                        </select>
+
+                        <select
+                            className="flex-1 md:flex-none px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 focus:outline-none focus:border-primary"
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                        >
+                            <option value="All">所有状态</option>
+                            <option value="Completed">已完成</option>
+                            <option value="Pending">处理中</option>
                         </select>
 
                         <select

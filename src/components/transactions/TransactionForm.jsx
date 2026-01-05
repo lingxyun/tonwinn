@@ -165,15 +165,36 @@ const TransactionForm = ({ onSubmit, onCancel, initialData }) => {
                 </select>
             </div>
 
-            <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">日期</label>
-                <input
-                    type="date"
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-slate-900 dark:text-white"
-                    value={formData.date}
-                    onChange={e => setFormData({ ...formData, date: e.target.value })}
-                    required
-                />
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">日期</label>
+                    <input
+                        type="date"
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-slate-900 dark:text-white"
+                        value={formData.date}
+                        onChange={e => setFormData({ ...formData, date: e.target.value })}
+                        required
+                    />
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">状态</label>
+                    <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+                        <button
+                            type="button"
+                            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${formData.status === 'Completed' ? 'bg-white dark:bg-slate-900 text-green-700 dark:text-green-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                            onClick={() => setFormData({ ...formData, status: 'Completed' })}
+                        >
+                            已完成
+                        </button>
+                        <button
+                            type="button"
+                            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${formData.status === 'Pending' ? 'bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                            onClick={() => setFormData({ ...formData, status: 'Pending' })}
+                        >
+                            处理中
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div className="space-y-2">
