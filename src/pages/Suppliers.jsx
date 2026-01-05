@@ -6,6 +6,7 @@ import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import { ask } from '@tauri-apps/plugin-dialog';
 import Modal from '../components/ui/Modal';
+import TiltCard from '../components/ui/TiltCard';
 import CustomerForm from '../components/customers/CustomerForm';
 
 import { useData } from '../context/DataContext';
@@ -175,7 +176,7 @@ const Suppliers = () => {
                     return (
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             {/* Card 1: Balance (Payables) */}
-                            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 fill-mode-backwards">
+                            <TiltCard className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 fill-mode-backwards">
                                 <div className="absolute right-0 top-0 w-24 h-24 bg-rose-50 dark:bg-rose-900/10 rounded-full -mr-8 -mt-8 blur-2xl group-hover:bg-rose-100 dark:group-hover:bg-rose-900/20 transition-colors duration-500"></div>
                                 <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2 relative z-10">账户余额</div>
                                 <div className={cn(
@@ -187,10 +188,10 @@ const Suppliers = () => {
                                 <div className="text-[10px] text-slate-400 mt-1 relative z-10">
                                     {selectedSupplier.balance < 0 ? '需支付货款' : '预付款结余'}
                                 </div>
-                            </div>
+                            </TiltCard>
 
                             {/* Card 2: Activity */}
-                            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 delay-75 fill-mode-backwards group">
+                            <TiltCard className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 delay-75 fill-mode-backwards group">
                                 <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">最近采购</div>
                                 <div className="flex items-end justify-between">
                                     <div className="text-2xl font-bold text-slate-900 dark:text-white group-hover:scale-105 transition-transform origin-left">
@@ -205,10 +206,10 @@ const Suppliers = () => {
                                 <div className="text-xs text-slate-400 mt-1">
                                     上次交易: {lastTx ? lastTx.date : '—'}
                                 </div>
-                            </div>
+                            </TiltCard>
 
                             {/* Card 3: Volume (Total Expense) */}
-                            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 delay-150 fill-mode-backwards group">
+                            <TiltCard className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 delay-150 fill-mode-backwards group">
                                 <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">采购总额</div>
                                 <div className="flex flex-col group-hover:scale-105 transition-transform origin-left">
                                     <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
@@ -218,10 +219,10 @@ const Suppliers = () => {
                                         笔均采购: ¥{aov.toFixed(2)}
                                     </div>
                                 </div>
-                            </div>
+                            </TiltCard>
 
                             {/* Card 4: Top Category */}
-                            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 delay-200 fill-mode-backwards group">
+                            <TiltCard className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 delay-200 fill-mode-backwards group">
                                 <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">主要采购</div>
                                 {topCategory ? (
                                     <div className="group-hover:scale-105 transition-transform origin-left">
@@ -241,7 +242,7 @@ const Suppliers = () => {
                                 ) : (
                                     <div className="text-slate-400 text-sm italic py-2">暂无数据</div>
                                 )}
-                            </div>
+                            </TiltCard>
                         </div>
                     );
                 })()}

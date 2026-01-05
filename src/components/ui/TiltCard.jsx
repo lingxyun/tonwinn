@@ -26,8 +26,8 @@ const TiltCard = ({ children, className, onClick, gradient = "from-white/50 to-t
         setTransform(`perspective(1000px) rotateX(${xRot}deg) rotateY(${yRot}deg) scale3d(1.02, 1.02, 1.02)`);
         setOpacity(1);
 
-        // Dynamic Glare Position
-        setBackground(`radial-gradient(circle at ${mouseX}px ${mouseY}px, rgba(255,255,255,0.3) 0%, transparent 80%)`);
+        // Dynamic Glare Position - Increased opacity for visibility in light mode
+        setBackground(`radial-gradient(circle at ${mouseX}px ${mouseY}px, rgba(255,255,255,0.7) 0%, transparent 60%)`);
     };
 
     const handleMouseLeave = () => {

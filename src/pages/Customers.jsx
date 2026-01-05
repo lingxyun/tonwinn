@@ -6,6 +6,7 @@ import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import { ask } from '@tauri-apps/plugin-dialog';
 import Modal from '../components/ui/Modal';
+import TiltCard from '../components/ui/TiltCard';
 import CustomerForm from '../components/customers/CustomerForm';
 
 import { useData } from '../context/DataContext';
@@ -174,16 +175,16 @@ const Customers = () => {
                     return (
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             {/* Card 1: Balance */}
-                            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 fill-mode-backwards">
+                            <TiltCard className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 fill-mode-backwards">
                                 <div className="absolute right-0 top-0 w-24 h-24 bg-blue-50 dark:bg-blue-900/10 rounded-full -mr-8 -mt-8 blur-2xl group-hover:bg-blue-100 dark:group-hover:bg-blue-900/20 transition-colors duration-500"></div>
                                 <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2 relative z-10">当前余额</div>
                                 <div className="text-2xl font-black text-slate-900 dark:text-white font-mono flex items-baseline gap-1 relative z-10 group-hover:scale-105 transition-transform origin-left">
                                     <span className="text-sm">¥</span>{selectedCustomer.balance?.toFixed(2) || '0.00'}
                                 </div>
-                            </div>
+                            </TiltCard>
 
                             {/* Card 2: Activity */}
-                            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 delay-75 fill-mode-backwards group">
+                            <TiltCard className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 delay-75 fill-mode-backwards group">
                                 <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">最近活跃</div>
                                 <div className="flex items-end justify-between">
                                     <div className="text-2xl font-bold text-slate-900 dark:text-white group-hover:scale-105 transition-transform origin-left">
@@ -198,10 +199,10 @@ const Customers = () => {
                                 <div className="text-xs text-slate-400 mt-1">
                                     上次交易: {lastTx ? lastTx.date : '—'}
                                 </div>
-                            </div>
+                            </TiltCard>
 
                             {/* Card 3: Value (AOV) */}
-                            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 delay-150 fill-mode-backwards group">
+                            <TiltCard className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 delay-150 fill-mode-backwards group">
                                 <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">客户价值</div>
                                 <div className="flex flex-col group-hover:scale-105 transition-transform origin-left">
                                     <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
@@ -211,10 +212,10 @@ const Customers = () => {
                                         平均客单价: ¥{aov.toFixed(2)}
                                     </div>
                                 </div>
-                            </div>
+                            </TiltCard>
 
                             {/* Card 4: Preference */}
-                            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 delay-200 fill-mode-backwards group">
+                            <TiltCard className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 delay-200 fill-mode-backwards group">
                                 <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">偏好品类</div>
                                 {topCategory ? (
                                     <div className="group-hover:scale-105 transition-transform origin-left">
@@ -234,7 +235,7 @@ const Customers = () => {
                                 ) : (
                                     <div className="text-slate-400 text-sm italic py-2">暂无偏好数据</div>
                                 )}
-                            </div>
+                            </TiltCard>
                         </div>
                     );
                 })()}
