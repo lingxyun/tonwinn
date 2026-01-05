@@ -23,6 +23,7 @@
     "fs:allow-read-file",
     "fs:allow-exists",
     "fs:allow-stat",
+    "fs:allow-app-local-data-recursive",
     "fs:allow-home-write",
     "fs:allow-desktop-write",
     "fs:allow-download-write",
