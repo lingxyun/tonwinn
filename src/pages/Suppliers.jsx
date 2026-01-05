@@ -152,33 +152,102 @@ const Suppliers = () => {
                     </div>
                 </div>
 
-                {/* Info Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                        <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">账户余额</div>
-                        <div className={cn(
-                            "text-2xl font-black font-mono",
-                            selectedSupplier.balance < 0 ? "text-rose-600" : "text-emerald-600"
-                        )}>
-                            ¥{parseFloat(selectedSupplier.balance).toFixed(2)}
+                {/* Info Cards - Supplier Profile */}
+                {(() => {
+                    const now = new Date();
+                    const lastTx = supplierTx[0];
+                    const lastTxDate = lastTx ? new Date(lastTx.date) : null;
+                    const daysSinceLast = lastTxDate ? Math.floor((now - lastTxDate) / (1000 * 60 * 60 * 24)) : -1;
+
+                    // Filter for Expenses (Money OUT)
+                    const expenseTx = supplierTx.filter(t => t.type === 'Expense');
+                    const totalSpent = expenseTx.reduce((sum, t) => sum + t.amount, 0);
+                    const txCount = expenseTx.length;
+                    const aov = txCount > 0 ? totalSpent / txCount : 0;
+
+                    // Calculate Top Category (What do we buy most?)
+                    const catMap = {};
+                    expenseTx.forEach(t => {
+                        catMap[t.category] = (catMap[t.category] || 0) + t.amount;
+                    });
+                    const topCategory = Object.entries(catMap).sort((a, b) => b[1] - a[1])[0];
+
+                    return (
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            {/* Card 1: Balance (Payables) */}
+                            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 fill-mode-backwards">
+                                <div className="absolute right-0 top-0 w-24 h-24 bg-rose-50 dark:bg-rose-900/10 rounded-full -mr-8 -mt-8 blur-2xl group-hover:bg-rose-100 dark:group-hover:bg-rose-900/20 transition-colors duration-500"></div>
+                                <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2 relative z-10">账户余额</div>
+                                <div className={cn(
+                                    "text-2xl font-black font-mono flex items-baseline gap-1 relative z-10 group-hover:scale-105 transition-transform origin-left",
+                                    selectedSupplier.balance < 0 ? "text-rose-600" : "text-emerald-600"
+                                )}>
+                                    <span className="text-sm">¥</span>{parseFloat(selectedSupplier.balance).toFixed(2)}
+                                </div>
+                                <div className="text-[10px] text-slate-400 mt-1 relative z-10">
+                                    {selectedSupplier.balance < 0 ? '需支付货款' : '预付款结余'}
+                                </div>
+                            </div>
+
+                            {/* Card 2: Activity */}
+                            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 delay-75 fill-mode-backwards group">
+                                <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">最近采购</div>
+                                <div className="flex items-end justify-between">
+                                    <div className="text-2xl font-bold text-slate-900 dark:text-white group-hover:scale-105 transition-transform origin-left">
+                                        {daysSinceLast === -1 ? '无记录' : daysSinceLast === 0 ? '今天' : `${daysSinceLast}天前`}
+                                    </div>
+                                    {daysSinceLast > 60 && (
+                                        <div className="px-2 py-1 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 text-[10px] font-bold rounded flex items-center gap-1">
+                                            💤 沉睡
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="text-xs text-slate-400 mt-1">
+                                    上次交易: {lastTx ? lastTx.date : '—'}
+                                </div>
+                            </div>
+
+                            {/* Card 3: Volume (Total Expense) */}
+                            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 delay-150 fill-mode-backwards group">
+                                <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">采购总额</div>
+                                <div className="flex flex-col group-hover:scale-105 transition-transform origin-left">
+                                    <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
+                                        <span className="text-sm text-slate-400 font-sans font-normal mr-1">共</span>¥{totalSpent.toFixed(0)}
+                                    </div>
+                                    <div className="text-xs text-slate-500 mt-1">
+                                        笔均采购: ¥{aov.toFixed(2)}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Card 4: Top Category */}
+                            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 delay-200 fill-mode-backwards group">
+                                <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">主要采购</div>
+                                {topCategory ? (
+                                    <div className="group-hover:scale-105 transition-transform origin-left">
+                                        <div className="text-xl font-bold text-slate-900 dark:text-white truncate" title={topCategory[0]}>
+                                            {topCategory[0]}
+                                        </div>
+                                        <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+                                            <div
+                                                className="bg-amber-500 h-full rounded-full transition-all duration-1000 ease-out"
+                                                style={{ width: `${Math.min((topCategory[1] / totalSpent) * 100, 100)}%` }}
+                                            />
+                                        </div>
+                                        <div className="text-[10px] text-slate-400 mt-1 text-right">
+                                            占采购额 {((topCategory[1] / totalSpent) * 100).toFixed(0)}%
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="text-slate-400 text-sm italic py-2">暂无数据</div>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                    <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                        <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">往来笔数</div>
-                        <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                            {supplierTx.length} <span className="text-sm font-normal text-slate-500">笔</span>
-                        </div>
-                    </div>
-                    <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                        <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">地址信息</div>
-                        <div className="text-slate-900 dark:text-white text-sm">
-                            {selectedSupplier.address || <span className="text-slate-400 italic">未录入地址</span>}
-                        </div>
-                    </div>
-                </div>
+                    );
+                })()}
 
                 {/* Transactions List */}
-                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in slide-in-from-bottom-8 delay-300 duration-500 fill-mode-backwards">
                     <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex justify-between items-center">
                         <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
                             <FileSpreadsheet className="w-4 h-4 text-slate-400" />
@@ -195,6 +264,7 @@ const Suppliers = () => {
                                         <th className="px-6 py-3">日期</th>
                                         <th className="px-6 py-3">描述</th>
                                         <th className="px-6 py-3">类型</th>
+                                        <th className="px-6 py-3">分类</th>
                                         <th className="px-6 py-3 text-right">金额</th>
                                         <th className="px-6 py-3">状态</th>
                                     </tr>
@@ -204,26 +274,32 @@ const Suppliers = () => {
                                         <tr key={tx.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
                                             <td className="px-6 py-3 font-medium text-slate-900 dark:text-slate-100">#{tx.id}</td>
                                             <td className="px-6 py-3 text-slate-500">{tx.date}</td>
-                                            <td className="px-6 py-3 text-slate-600 dark:text-slate-400">{tx.description}</td>
+                                            <td className="px-6 py-3 text-slate-600 dark:text-slate-400 max-w-xs truncate" title={tx.description}>{tx.description}</td>
                                             <td className="px-6 py-3">
                                                 <span className={cn(
-                                                    "px-2 py-0.5 rounded-full text-xs font-medium",
-                                                    tx.type === 'Income' ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400" : "bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400"
+                                                    "px-2.5 py-1 rounded-full text-xs font-bold",
+                                                    tx.type === 'Income' ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/10 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30" : "bg-rose-50 text-rose-600 dark:bg-rose-900/10 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30"
                                                 )}>
                                                     {tx.type === 'Income' ? '收入' : '支出'}
                                                 </span>
                                             </td>
+                                            <td className="px-6 py-3 text-slate-600 dark:text-slate-400 text-xs">
+                                                {tx.category || '-'}
+                                            </td>
                                             <td className={cn(
-                                                "px-6 py-3 text-right font-medium font-mono",
+                                                "px-6 py-3 text-right font-bold font-mono text-base",
                                                 tx.type === 'Income' ? "text-emerald-600" : "text-slate-900 dark:text-slate-100"
                                             )}>
                                                 {tx.type === 'Income' ? '+' : '-'} ¥{tx.amount.toFixed(2)}
                                             </td>
                                             <td className="px-6 py-3">
                                                 <span className={cn(
-                                                    "inline-flex items-center text-xs px-2 py-0.5 rounded-full border",
+                                                    "inline-flex items-center text-xs px-2.5 py-1 rounded-full border font-bold",
                                                     tx.status === 'Completed' ? "bg-green-50 text-green-700 border-green-100 dark:bg-green-900/20 dark:border-green-900/30 dark:text-green-400" : "bg-amber-50 text-amber-700 border-amber-100"
                                                 )}>
+                                                    <span className={cn("w-1.5 h-1.5 rounded-full mr-1.5",
+                                                        tx.status === 'Completed' ? "bg-green-500" : "bg-amber-500"
+                                                    )} />
                                                     {tx.status === 'Completed' ? '已完成' : '处理中'}
                                                 </span>
                                             </td>
@@ -233,7 +309,10 @@ const Suppliers = () => {
                             </table>
                         </div>
                     ) : (
-                        <div className="p-8 text-center text-slate-400 text-sm">
+                        <div className="p-12 text-center text-slate-400 text-sm flex flex-col items-center">
+                            <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
+                                <FileSpreadsheet className="w-6 h-6 text-slate-300" />
+                            </div>
                             该供货商暂无往来记录
                         </div>
                     )}
