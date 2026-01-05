@@ -517,7 +517,21 @@ export const DataProvider = ({ children }) => {
             console.log('Starting data import...');
             const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
 
-            if (!data.customers || !data.transactions) {
+            // Handle both flat (legacy) and nested (auto-backup) formats
+            const title = data.title; // Check for standard format
+            const content = data.data || data;
+
+            if (!content.customers && !content.transactions) {
+                // Fallback: maybe it IS the content directly? 
+                if (!data.customers && !data.transactions) {
+                    toast.error('无效的备份文件格式');
+                    return;
+                }
+            }
+
+            const source = content.customers ? content : data;
+
+            if (!source.customers || !source.transactions) {
                 toast.error('无效的备份文件格式');
                 return;
             }
@@ -525,10 +539,15 @@ export const DataProvider = ({ children }) => {
             // 1. Clear existing
             await db.execute('DELETE FROM transactions');
             await db.execute('DELETE FROM customers');
+            // Re-create categories if they exist in backup, but current add logic might duplicate or fail if IDs clash? 
+            // The current import logic doesn't import categories! 
+            // Note: The auto backup DOES include categories: `categories: currentCategories`
+            // But importData only handled customers and transactions. 
+            // I should probably add category import too, but first let's fix the structure.
 
             // 2. Insert Customers
-            console.log(`Importing ${data.customers.length} customers...`);
-            for (const cust of data.customers) {
+            console.log(`Importing ${source.customers.length} customers...`);
+            for (const cust of source.customers) {
                 await db.execute(
                     'INSERT INTO customers (id, name, email, phone, address, balance, status, created_at, role, categoryIds) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                     [cust.id, cust.name, cust.email || '', cust.phone, cust.address || '', cust.balance || 0, cust.status || 'Active', cust.created_at || new Date().toISOString(), cust.role || 'Customer', cust.categoryIds || (cust.categoryId ? JSON.stringify([cust.categoryId]) : '[]')]
@@ -536,8 +555,8 @@ export const DataProvider = ({ children }) => {
             }
 
             // 3. Insert Transactions
-            console.log(`Importing ${data.transactions.length} transactions...`);
-            for (const tx of data.transactions) {
+            console.log(`Importing ${source.transactions.length} transactions...`);
+            for (const tx of source.transactions) {
                 await db.execute(
                     'INSERT INTO transactions (id, customerId, amount, type, category, date, description, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                     [tx.id, tx.customerId, tx.amount, tx.type, tx.category || 'Uncategorized', tx.date, tx.description || '', tx.status || 'Completed', tx.created_at || new Date().toISOString()]
