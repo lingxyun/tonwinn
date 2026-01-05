@@ -25,7 +25,6 @@
     "fs:allow-stat",
     "fs:allow-applocaldata-write-recursive",
     "fs:allow-applocaldata-read-recursive",
-    "fs:allow-applocaldata-create-recursive",
     "fs:allow-home-write",
     "fs:allow-desktop-write",
     "fs:allow-download-write",
