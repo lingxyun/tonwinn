@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import Papa from 'papaparse';
 import * as db from '../utils/tauriDb';
 import { save } from '@tauri-apps/plugin-dialog';
-import { writeTextFile } from '@tauri-apps/plugin-fs';
+import { writeTextFile, BaseDirectory, exists, mkdir, readDir, remove } from '@tauri-apps/plugin-fs';
 
 const DataContext = createContext();
 
@@ -39,7 +39,13 @@ export const DataProvider = ({ children }) => {
                 setCustomers(custData);
                 setTransactions(txData);
                 setCategories(catData);
+                setCategories(catData);
                 setLoading(false);
+
+                // Trigger Auto Backup after successful load
+                if (isTauri) {
+                    performAutoBackup(custData, txData, catData);
+                }
             } catch (error) {
                 console.error(`Fetch attempt failed (${retries} retries left):`, error);
                 if (retries > 0 && isTauri) {
@@ -82,6 +88,65 @@ export const DataProvider = ({ children }) => {
     };
 
     // --- Persistence ---
+
+    // Automatic Backup Logic
+    const performAutoBackup = async (currentCustomers, currentTransactions, currentCategories) => {
+        try {
+            const backupDir = 'backups';
+
+            // 1. Ensure backup directory exists
+            const dirExists = await exists(backupDir, { baseDir: BaseDirectory.AppLocalData });
+            if (!dirExists) {
+                await mkdir(backupDir, { baseDir: BaseDirectory.AppLocalData, recursive: true });
+            }
+
+            // 2. Check if today's backup exists
+            const dateStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            const fileName = `${backupDir}/backup_${dateStr}.json`;
+
+            const backupExists = await exists(fileName, { baseDir: BaseDirectory.AppLocalData });
+
+            if (!backupExists) {
+                // 3. Create Backup
+                const backupData = {
+                    timestamp: new Date().toISOString(),
+                    version: "1.0",
+                    stats: {
+                        customers: currentCustomers.length,
+                        transactions: currentTransactions.length
+                    },
+                    data: {
+                        customers: currentCustomers,
+                        transactions: currentTransactions,
+                        categories: currentCategories
+                    }
+                };
+
+                await writeTextFile(fileName, JSON.stringify(backupData, null, 2), { baseDir: BaseDirectory.AppLocalData });
+                console.log('Daily backup created:', fileName);
+
+                // 4. Cleanup old backups (Keep last 7)
+                const files = await readDir(backupDir, { baseDir: BaseDirectory.AppLocalData });
+                const backupFiles = files
+                    .filter(f => f.name.startsWith('backup_') && f.name.endsWith('.json'))
+                    .sort((a, b) => b.name.localeCompare(a.name)); // Descending order (newest first)
+
+                if (backupFiles.length > 7) {
+                    const filesToDelete = backupFiles.slice(7);
+                    for (const file of filesToDelete) {
+                        try {
+                            await remove(`${backupDir}/${file.name}`, { baseDir: BaseDirectory.AppLocalData });
+                            console.log('Deleted old backup:', file.name);
+                        } catch (e) {
+                            console.warn('Failed to delete old backup:', file.name);
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Auto backup failed:', error);
+        }
+    };
 
 
     // --- Actions: Customers ---
