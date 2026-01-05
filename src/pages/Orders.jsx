@@ -8,6 +8,7 @@ import InvoiceModal from '../components/transactions/InvoiceModal';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import { ask } from '@tauri-apps/plugin-dialog';
+import TiltCard from '../components/ui/TiltCard';
 
 import { useData } from '../context/DataContext';
 
@@ -107,7 +108,7 @@ const Orders = () => {
                     <div className="relative" ref={dataMenuRef}>
                         <button
                             onClick={() => setIsDataMenuOpen(!isDataMenuOpen)}
-                            className="hidden md:flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+                            className="hidden md:flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm btn-push"
                         >
                             <FileSpreadsheet className="w-4 h-4" />
                             数据操作
@@ -148,7 +149,7 @@ const Orders = () => {
 
                     <button
                         onClick={() => setIsTxModalOpen(true)}
-                        className="hidden md:flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm"
+                        className="hidden md:flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm btn-push"
                     >
                         <Plus className="w-4 h-4" />
                         新建交易
@@ -158,9 +159,22 @@ const Orders = () => {
 
             {/* Mini Dashboard */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/20 flex items-center justify-between">
+                <TiltCard
+                    onClick={() => {
+                        const today = new Date().toISOString().split('T')[0];
+                        setDateRange({ start: today, end: today });
+                        setFilterType('Income');
+                        setFilterStatus('All');
+                        setFilterCategory('All');
+                        setFilterCustomer('All');
+                        setFilterAmount({ min: '', max: '' });
+                        toast.success("已筛选：今日收款");
+                    }}
+                    className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/20 flex items-center justify-between cursor-pointer group"
+                    gradient="from-emerald-400/20 to-transparent"
+                >
                     <div>
-                        <div className="text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">今日收款</div>
+                        <div className="text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider group-hover:underline">今日收款</div>
                         <div className="text-2xl font-black text-emerald-700 dark:text-emerald-300 font-mono mt-1">
                             <span className="text-sm mr-1">¥</span>{todayStats.income.toFixed(2)}
                         </div>
@@ -168,11 +182,24 @@ const Orders = () => {
                     <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-800/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                         <span className="font-bold text-lg">今</span>
                     </div>
-                </div>
+                </TiltCard>
 
-                <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-xl border border-amber-100 dark:border-amber-900/20 flex items-center justify-between">
+                <TiltCard
+                    onClick={() => {
+                        const currentMonth = new Date().toISOString().substring(0, 7);
+                        setDateRange({ start: currentMonth + '-01', end: currentMonth + '-31' }); // Simplified for month range
+                        setFilterType('All');
+                        setFilterStatus('Pending');
+                        setFilterCategory('All');
+                        setFilterCustomer('All');
+                        setFilterAmount({ min: '', max: '' });
+                        toast.success("已筛选：本月待结清");
+                    }}
+                    className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-xl border border-amber-100 dark:border-amber-900/20 flex items-center justify-between cursor-pointer group"
+                    gradient="from-amber-400/20 to-transparent"
+                >
                     <div>
-                        <div className="text-amber-600 dark:text-amber-400 text-xs font-bold uppercase tracking-wider">本月待结清</div>
+                        <div className="text-amber-600 dark:text-amber-400 text-xs font-bold uppercase tracking-wider group-hover:underline">本月待结清</div>
                         <div className="text-2xl font-black text-amber-700 dark:text-amber-300 font-mono mt-1">
                             <span className="text-sm mr-1">¥</span>{pendingAmount.toFixed(2)}
                         </div>
@@ -180,11 +207,24 @@ const Orders = () => {
                     <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-800/30 flex items-center justify-center text-amber-600 dark:text-amber-400">
                         <span className="font-bold text-lg">待</span>
                     </div>
-                </div>
+                </TiltCard>
 
-                <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-100 dark:border-blue-900/20 flex items-center justify-between">
+                <TiltCard
+                    onClick={() => {
+                        const today = new Date().toISOString().split('T')[0];
+                        setDateRange({ start: today, end: today });
+                        setFilterType('All');
+                        setFilterStatus('All');
+                        setFilterCategory('All');
+                        setFilterCustomer('All');
+                        setFilterAmount({ min: '', max: '' });
+                        toast.success("已筛选：今日全部订单");
+                    }}
+                    className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-100 dark:border-blue-900/20 flex items-center justify-between cursor-pointer group"
+                    gradient="from-blue-400/20 to-transparent"
+                >
                     <div>
-                        <div className="text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-wider">今日单量</div>
+                        <div className="text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-wider group-hover:underline">今日单量</div>
                         <div className="text-2xl font-black text-blue-700 dark:text-blue-300 font-mono mt-1">
                             {todayStats.count} <span className="text-sm font-medium text-blue-500/80">笔</span>
                         </div>
@@ -192,7 +232,7 @@ const Orders = () => {
                     <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-800/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
                         <FileText className="w-5 h-5" />
                     </div>
-                </div>
+                </TiltCard>
             </div>
 
             <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">

@@ -149,3 +149,51 @@
   transform: translateY(-10px);
   transition: opacity 300ms, transform 300ms;
 }
+
+/* 3D Physical Button Effect */
+.btn-3d {
+  transition: all 0.1s;
+  border-bottom-width: 4px;
+}
+
+.btn-3d:active {
+  transform: translateY(3px);
+  border-bottom-width: 1px;
+  margin-bottom: 3px; /* Compensate for lost border to keep layout stable-ish, or just let it move */
+  /* Actually, pure transform is safer for layout stability, but border-width change requires compensation or accept jump */
+  /* Let's try just transform first, but user asked for "Physical Thickness". */
+  /* Border method: */
+}
+
+/* Improved Physical Button */
+.btn-physical {
+    @apply border-b-4 transition-all duration-75 active:border-b-0 active:translate-y-1 active:mb-0;
+}
+/* Wait, active:mb-0? If I have border-b-4 (4px), active:border-b-0 (0px), I lose 4px height. */
+/* translate-y-1 (4px). So the element moves down 4px. */
+/* The total space taken is (Height + 4px border). */
+/* On active: (Height + 0px border) + 4px translate. visual bottom is same. */
+/* But layout flow might change if border is part of box model. */
+/* Easy fix: use shadow-bottom instead of border. */
+.btn-3d-shadow {
+    box-shadow: 0 4px 0 0 currentColor; /* Use text color or specific color */
+    transform: translateY(0);
+    transition: all 0.1s;
+}
+.btn-3d-shadow:active {
+    box-shadow: 0 0 0 0 currentColor;
+    transform: translateY(4px);
+}
+/* This is safer. I'll use a specific color variable for the shadow opacity or just darken. */
+
+.btn-push {
+    border-bottom: 4px solid rgba(0,0,0,0.1); 
+    transition: all 0.1s;
+}
+.dark .btn-push {
+    border-bottom: 4px solid rgba(0,0,0,0.3);
+}
+.btn-push:active {
+    border-bottom-width: 0px;
+    transform: translateY(4px);
+}
