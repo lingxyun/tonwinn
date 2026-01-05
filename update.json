@@ -1,11 +1,11 @@
 {
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUelc1V09CYzZhZjVia2FkcXdDL2loS3V0dG5WTUZKcU1nNFVxQWlFMXRqR005ZXMrOGx5SnpweTFYL255Y3lUZjlIbzFlVHVjMWU0M1RZaWVQQWRLR0NocFl5eWdBQmdnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzY3NjIzMDAyCWZpbGU66bG86LeDQ1JNXzAuMS41OV94NjQtc2V0dXAuZXhlCkh2bEQzdjhiUXNWTWRXbWRZaTJ1bk1DRWlOM2xGdG4vSG9LNFdkWmVNWTdnUHdhQzBvVEhKWklvdVJmOSt6ckRndFBqWVdMVHFaMzUxUEc3Snp3cURRPT0K",
-      "url": "https://gitee.com/wx_3a9051a7ee/tonwinn/releases/download/v0.1.59/鱼跃CRM_0.1.59_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUelc1V09CYzZhZjNKUjJhcXFZeFllTzd6NENZaDJYc3duNUVUaEt0OUpHUk0zc0kzM24xWFRTRzhacER5WmNNa3pHNTlmeUpsOWdWMWxuS0l4K3JLNFpOS20xR2RhNlFBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzY3NjIzNDE1CWZpbGU66bG86LeDQ1JNXzAuMS42MF94NjQtc2V0dXAuZXhlCkJrZXYweldCKzBTQlpCL1BLMkxFVDFhSVY3THFEdjlmcVJqdXpFaEJGelI0S0xwODZGbkI4RkFPbCt3dVo0b29NcG42Uk5GTmhKcHU2L3kwM2pRWkJnPT0K",
+      "url": "https://gitee.com/wx_3a9051a7ee/tonwinn/releases/download/v0.1.60/鱼跃CRM_0.1.60_x64-setup.exe"
     }
   },
-  "pub_date": "2026-01-05T14:23:29.752Z",
-  "version": "0.1.59",
+  "pub_date": "2026-01-05T14:30:21.433Z",
+  "version": "0.1.60",
   "notes": "版本 v0.1.3 更新说明：\r\n1. 客户/供货商分类管理：支持为往来单位设置分类并在列表中展示。\r\n2. 订单管理自动过滤：支持按客户/供应商所属分类自动筛选订单。\r\n3. 快速跳转：在客户/供应商列表点击名称可直接跳转至过滤后的订单明细。\r\n4. 系统信息墙：关于页面新增作者简介与团队信息。"
 }
