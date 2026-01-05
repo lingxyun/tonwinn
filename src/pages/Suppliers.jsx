@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Plus, MoreHorizontal, Phone, MapPin, Trash2, Edit, Download, Upload, FileSpreadsheet, FileText, ChevronDown, RotateCcw, Users } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
@@ -10,8 +11,10 @@ import CustomerForm from '../components/customers/CustomerForm';
 import { useData } from '../context/DataContext';
 
 const Suppliers = () => {
+    const navigate = useNavigate();
     const {
         customers: entityList,
+        transactions,
         addCustomer,
         updateCustomer,
         deleteCustomer,
@@ -19,9 +22,11 @@ const Suppliers = () => {
         exportTransactionDetailsToCSV,
         downloadCustomerTemplate,
         importCustomersFromCSV,
-        refreshData
+        refreshData,
+        categories
     } = useData();
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('all');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingSupplier, setEditingSupplier] = useState(null);
     const [activeMenuId, setActiveMenuId] = useState(null);
@@ -46,11 +51,16 @@ const Suppliers = () => {
 
     const supplierList = entityList.filter(e => e.role === 'Supplier');
 
-    const filteredSuppliers = supplierList.filter(s =>
-        s.name.includes(searchTerm) ||
-        (s.address && s.address.includes(searchTerm)) ||
-        s.phone.includes(searchTerm)
-    );
+    const filteredSuppliers = supplierList.filter(s => {
+        const matchesSearch = s.name.includes(searchTerm) ||
+            (s.address && s.address.includes(searchTerm)) ||
+            s.phone.includes(searchTerm);
+
+        const matchesCategory = selectedCategory === 'all' ||
+            (selectedCategory === 'none' ? !s.categoryId : s.categoryId === parseInt(selectedCategory));
+
+        return matchesSearch && matchesCategory;
+    });
 
     const handleAddOrUpdateSupplier = (data) => {
         if (editingSupplier) {
@@ -166,8 +176,8 @@ const Suppliers = () => {
             </div>
 
             <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-                <div className="p-4 border-b border-slate-200 dark:border-slate-800">
-                    <div className="relative max-w-md">
+                <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex gap-4">
+                    <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input
                             type="text"
@@ -177,6 +187,19 @@ const Suppliers = () => {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
+                    <div className="w-48">
+                        <select
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-slate-900 dark:text-white"
+                            value={selectedCategory}
+                            onChange={(e) => setSelectedCategory(e.target.value)}
+                        >
+                            <option value="all">所有支出类别</option>
+                            <option value="none">未分类供货商</option>
+                            {categories.filter(cat => cat.type === 'Expense').map(cat => (
+                                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -184,6 +207,7 @@ const Suppliers = () => {
                         <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs uppercase font-medium">
                             <tr>
                                 <th className="px-6 py-4">姓名/名称</th>
+                                <th className="px-6 py-4">所属分类</th>
                                 <th className="px-6 py-4">联系电话</th>
                                 <th className="px-6 py-4">地址</th>
                                 <th className="px-6 py-4">账户余额</th>
@@ -194,9 +218,23 @@ const Suppliers = () => {
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {filteredSuppliers.map((supplier) => (
                                 <tr key={supplier.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group">
-                                    <td className="px-6 py-4">
-                                        <div className="font-medium text-slate-900 dark:text-slate-100">{supplier.name}</div>
+                                    <td className="px-6 py-4 cursor-pointer group/name" onClick={() => navigate(`/orders?customerId=${supplier.id}`)}>
+                                        <div className="font-medium text-slate-900 dark:text-slate-100 group-hover/name:text-primary transition-colors flex items-center gap-2">
+                                            {supplier.name}
+                                            <span className="px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-500 font-normal">
+                                                {transactions?.filter(t => t.customerId === supplier.id).length || 0} 往来
+                                            </span>
+                                        </div>
                                         <div className="text-xs text-slate-400">ID: {supplier.id}</div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {supplier.categoryId ? (
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-100 dark:border-blue-800">
+                                                {categories.find(cat => cat.id === supplier.categoryId)?.name || '未知类别'}
+                                            </span>
+                                        ) : (
+                                            <span className="text-xs text-slate-400 italic">未分类</span>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
@@ -271,6 +309,7 @@ const Suppliers = () => {
                     onCancel={closeModal}
                     initialData={editingSupplier}
                     isSupplier={true}
+                    categories={categories}
                 />
             </Modal>
         </div>

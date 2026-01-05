@@ -27,6 +27,34 @@ const TransactionForm = ({ onSubmit, onCancel, initialData }) => {
         }
     }, [formData.type]);
 
+    // Order Association Optimization: Suggest type and category based on customer
+    React.useEffect(() => {
+        if (!formData.customerId || initialData) return;
+
+        const selectedEntity = allEntities.find(e => e.id === parseInt(formData.customerId));
+        if (selectedEntity) {
+            const updates = {};
+
+            // Suggest Type
+            const suggestedType = selectedEntity.role === 'Supplier' ? 'Expense' : 'Income';
+            if (formData.type !== suggestedType) {
+                updates.type = suggestedType;
+            }
+
+            // Suggest Category
+            if (selectedEntity.categoryId) {
+                const categoryObj = allCategories.find(cat => cat.id === selectedEntity.categoryId);
+                if (categoryObj && categoryObj.name !== formData.category) {
+                    updates.category = categoryObj.name;
+                }
+            }
+
+            if (Object.keys(updates).length > 0) {
+                setFormData(prev => ({ ...prev, ...updates }));
+            }
+        }
+    }, [formData.customerId]);
+
     const handleSubmit = (e) => {
         e.preventDefault();
         // Basic validation

@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Plus, MoreHorizontal, Phone, MapPin, Trash2, Edit, Download, Upload, FileSpreadsheet, FileText, ChevronDown, RotateCcw } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
@@ -10,8 +11,10 @@ import CustomerForm from '../components/customers/CustomerForm';
 import { useData } from '../context/DataContext';
 
 const Customers = () => {
+    const navigate = useNavigate();
     const {
         customers: customerList,
+        transactions,
         addCustomer,
         updateCustomer,
         deleteCustomer,
@@ -19,9 +22,11 @@ const Customers = () => {
         exportTransactionDetailsToCSV,
         downloadCustomerTemplate,
         importCustomersFromCSV,
-        refreshData
+        refreshData,
+        categories
     } = useData();
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('all');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState(null);
     const [activeMenuId, setActiveMenuId] = useState(null);
@@ -47,11 +52,16 @@ const Customers = () => {
     // Strictly separate customers from suppliers
     const customerOnlyList = (customerList || []).filter(c => c.role === 'Customer' || !c.role);
 
-    const filteredCustomers = customerOnlyList.filter(c =>
-        c.name.includes(searchTerm) ||
-        (c.address && c.address.includes(searchTerm)) ||
-        c.phone.includes(searchTerm)
-    );
+    const filteredCustomers = customerOnlyList.filter(c => {
+        const matchesSearch = c.name.includes(searchTerm) ||
+            (c.address && c.address.includes(searchTerm)) ||
+            c.phone.includes(searchTerm);
+
+        const matchesCategory = selectedCategory === 'all' ||
+            (selectedCategory === 'none' ? !c.categoryId : c.categoryId === parseInt(selectedCategory));
+
+        return matchesSearch && matchesCategory;
+    });
 
     const handleAddOrUpdateCustomer = (data) => {
         if (editingCustomer) {
@@ -195,6 +205,19 @@ const Customers = () => {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
+                    <div className="w-48">
+                        <select
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-slate-900 dark:text-white"
+                            value={selectedCategory}
+                            onChange={(e) => setSelectedCategory(e.target.value)}
+                        >
+                            <option value="all">所有类别</option>
+                            <option value="none">未分类客户</option>
+                            {categories.filter(cat => cat.type === 'Income').map(cat => (
+                                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
 
                 {/* Desktop Table */}
@@ -203,6 +226,7 @@ const Customers = () => {
                         <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs uppercase font-medium">
                             <tr>
                                 <th className="px-6 py-4">客户信息</th>
+                                <th className="px-6 py-4">所属分类</th>
                                 <th className="px-6 py-4">联系方式</th>
                                 <th className="px-6 py-4">共计总成交金额</th>
                                 <th className="px-6 py-4">状态</th>
@@ -215,16 +239,30 @@ const Customers = () => {
                                     key={customer.id}
                                     className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group relative"
                                 >
-                                    <td className="px-6 py-4" onClick={() => toast.message(`查看客户 ${customer.name} 详情`)}>
-                                        <div className="flex items-center gap-3 cursor-pointer">
+                                    <td className="px-6 py-4" onClick={() => navigate(`/orders?customerId=${customer.id}`)}>
+                                        <div className="flex items-center gap-3 cursor-pointer group/name">
                                             <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 font-bold shrink-0">
                                                 {customer.name.charAt(0)}
                                             </div>
                                             <div>
-                                                <div className="text-sm font-medium text-slate-900 dark:text-white">{customer.name}</div>
+                                                <div className="text-sm font-medium text-slate-900 dark:text-white flex items-center gap-2">
+                                                    {customer.name}
+                                                    <span className="px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-500">
+                                                        {transactions?.filter(t => t.customerId === customer.id).length || 0} 订单
+                                                    </span>
+                                                </div>
                                                 <div className="text-xs text-slate-500 dark:text-slate-400">ID: #{customer.id.toString().padStart(4, '0')}</div>
                                             </div>
                                         </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {customer.categoryId ? (
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-100 dark:border-blue-800">
+                                                {categories.find(cat => cat.id === customer.categoryId)?.name || '未知类别'}
+                                            </span>
+                                        ) : (
+                                            <span className="text-xs text-slate-400 italic">未分类</span>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="space-y-1">
@@ -291,7 +329,14 @@ const Customers = () => {
                                         {customer.name.charAt(0)}
                                     </div>
                                     <div>
-                                        <div className="text-base font-bold text-slate-900 dark:text-white">{customer.name}</div>
+                                        <div className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                            {customer.name}
+                                            {customer.categoryId && (
+                                                <span className="px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-medium border border-blue-100 dark:border-blue-800/50">
+                                                    {categories.find(cat => cat.id === customer.categoryId)?.name}
+                                                </span>
+                                            )}
+                                        </div>
                                         <div className="text-xs text-slate-400">ID: #{customer.id.toString().padStart(4, '0')}</div>
                                     </div>
                                 </div>
@@ -321,6 +366,13 @@ const Customers = () => {
 
                             <div className="flex gap-2 pt-2">
                                 <button
+                                    onClick={() => navigate(`/orders?customerId=${customer.id}`)}
+                                    className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg text-sm font-medium"
+                                >
+                                    <FileSpreadsheet className="w-4 h-4" />
+                                    {transactions?.filter(t => t.customerId === customer.id).length || 0} 笔订单
+                                </button>
+                                <button
                                     onClick={() => openEditModal(customer)}
                                     className="flex-1 flex items-center justify-center gap-2 py-2 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg text-sm font-medium"
                                 >
@@ -348,9 +400,10 @@ const Customers = () => {
                     initialData={editingCustomer}
                     onSubmit={handleAddOrUpdateCustomer}
                     onCancel={closeModal}
+                    categories={categories}
                 />
             </Modal>
-        </div>
+        </div >
     );
 };
 

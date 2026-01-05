@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { cn } from '../lib/utils';
-import { Save, Settings as SettingsIcon, Upload, X, RefreshCw, Info, ExternalLink, ArrowRight } from 'lucide-react';
+import { Save, Settings as SettingsIcon, Upload, X, RefreshCw, Info, ExternalLink, ArrowRight, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { check } from '@tauri-apps/plugin-updater';
 import { getVersion } from '@tauri-apps/api/app';
@@ -267,6 +267,18 @@ const Settings = () => {
                                 <div className="flex flex-col">
                                     <span className="text-sm font-medium text-slate-700 dark:text-slate-300">在线更新</span>
                                     <span className="text-[10px] text-emerald-500">已开启签名校验</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 col-span-1 md:col-span-2">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                    <User size={20} />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">鱼跃开发者：凌小云😊</h4>
+                                    <p className="text-xs text-slate-500 mt-0.5">无论是一片坦途的光明，还是绝望寂静的黑暗，人总是不断向前走。你想到达明天，那么此刻就不要停下脚步。</p>
                                 </div>
                             </div>
                         </div>

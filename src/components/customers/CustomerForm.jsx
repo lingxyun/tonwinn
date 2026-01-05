@@ -1,15 +1,20 @@
 
 import React, { useState } from 'react';
 
-const CustomerForm = ({ onSubmit, onCancel, initialData = null, isSupplier = false }) => {
+const CustomerForm = ({ onSubmit, onCancel, initialData = null, isSupplier = false, categories = [] }) => {
     const [formData, setFormData] = useState(initialData || {
         name: '',
         address: '',
         phone: '',
         balance: '0',
         status: 'Active',
-        role: isSupplier ? 'Supplier' : 'Customer'
+        role: isSupplier ? 'Supplier' : 'Customer',
+        categoryId: null
     });
+
+    const filteredCategories = categories.filter(cat =>
+        isSupplier ? cat.type === 'Expense' : cat.type === 'Income'
+    );
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -72,6 +77,21 @@ const CustomerForm = ({ onSubmit, onCancel, initialData = null, isSupplier = fal
                         ? '注意：直接修改此数值将覆盖由交易自动计算的余额。'
                         : isSupplier ? '正数表示我方欠款，负数表示预付款（或溢缴款）。' : '正数表示预存款，负数表示客户欠款。'}
                 </p>
+            </div>
+
+            <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700">所属类别</label>
+                <select
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    value={formData.categoryId || ''}
+                    onChange={e => setFormData({ ...formData, categoryId: e.target.value ? parseInt(e.target.value) : null })}
+                >
+                    <option value="">-- 请选择类别 --</option>
+                    {filteredCategories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                </select>
+                <p className="text-xs text-slate-500">将{isSupplier ? '供货商' : '客户'}与交易类别关联，便于分类管理。</p>
             </div>
 
             <div className="space-y-2">

@@ -84,6 +84,12 @@ pub fn get_migrations() -> Vec<Migration> {
             description: "add role column to customers",
             sql: "ALTER TABLE customers ADD COLUMN role TEXT DEFAULT 'Customer';",
             kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 4,
+            description: "add categoryId column to customers",
+            sql: "ALTER TABLE customers ADD COLUMN categoryId INTEGER REFERENCES categories(id);",
+            kind: MigrationKind::Up,
         }
     ]
 }

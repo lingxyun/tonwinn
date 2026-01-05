@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { Search, Filter, Plus, Edit, Trash2, Calendar, FileText, FileSpreadsheet, Download, Upload, ChevronDown } from 'lucide-react';
 import Modal from '../components/ui/Modal';
 import TransactionForm from '../components/transactions/TransactionForm';
@@ -30,6 +30,8 @@ const Orders = () => {
     const dataMenuRef = React.useRef(null);
     const fileInputRef = React.useRef(null);
 
+    const [searchParams, setSearchParams] = useSearchParams();
+
     // Close menu when clicking outside
     React.useEffect(() => {
         const handleClickOutside = (event) => {
@@ -44,7 +46,15 @@ const Orders = () => {
     // Filter States
     const [filterType, setFilterType] = useState('All');
     const [filterCategory, setFilterCategory] = useState('All');
-    const [filterCustomer, setFilterCustomer] = useState('All');
+    const [filterCustomer, setFilterCustomer] = useState(searchParams.get('customerId') || 'All');
+
+    // Update filter if URL params change
+    React.useEffect(() => {
+        const cid = searchParams.get('customerId');
+        if (cid) {
+            setFilterCustomer(cid);
+        }
+    }, [searchParams]);
     const [filterAmount, setFilterAmount] = useState({ min: '', max: '' });
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
 
@@ -165,7 +175,16 @@ const Orders = () => {
                         <select
                             className="flex-1 md:flex-none px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 focus:outline-none focus:border-primary md:max-w-[140px]"
                             value={filterCustomer}
-                            onChange={(e) => setFilterCustomer(e.target.value)}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                setFilterCustomer(val);
+                                if (val === 'All') {
+                                    searchParams.delete('customerId');
+                                } else {
+                                    searchParams.set('customerId', val);
+                                }
+                                setSearchParams(searchParams);
+                            }}
                         >
                             <option value="All">所有客户</option>
                             {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
