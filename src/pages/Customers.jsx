@@ -457,7 +457,7 @@ const Customers = () => {
                                                 {customer.name.charAt(0)}
                                             </div>
                                             <div>
-                                                <div className="text-sm font-medium text-slate-900 dark:text-white flex items-center gap-2">
+                                                <div className="text-lg font-medium text-slate-900 dark:text-white flex items-center gap-2">
                                                     {customer.name}
                                                     <span className="px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-500">
                                                         {transactions?.filter(t => t.customerId === customer.id).length || 0} 订单
@@ -559,7 +559,7 @@ const Customers = () => {
                                         {customer.name.charAt(0)}
                                     </div>
                                     <div>
-                                        <div className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                        <div className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                             {customer.name}
                                             {customer.categoryId && (
                                                 <span className="px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-medium border border-blue-100 dark:border-blue-800/50">

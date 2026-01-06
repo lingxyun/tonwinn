@@ -446,7 +446,7 @@ const Suppliers = () => {
                             {filteredSuppliers.map((supplier) => (
                                 <tr key={supplier.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group">
                                     <td className="px-6 py-4 cursor-pointer group/name" onClick={() => setSelectedSupplier(supplier)}>
-                                        <div className="font-medium text-slate-900 dark:text-slate-100 group-hover/name:text-primary transition-colors flex items-center gap-2">
+                                        <div className="text-lg font-medium text-slate-900 dark:text-slate-100 group-hover/name:text-primary transition-colors flex items-center gap-2">
                                             {supplier.name}
                                             <span className="px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-500 font-normal">
                                                 {transactions?.filter(t => t.customerId === supplier.id).length || 0} 往来
