@@ -1,21 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { cn } from '../lib/utils';
-import { Save, Settings as SettingsIcon, Upload, X, RefreshCw, Info, ExternalLink, ArrowRight, User } from 'lucide-react';
+import { Save, Settings as SettingsIcon, Upload, X, RefreshCw, Info, ExternalLink, ArrowRight, User, Cloud } from 'lucide-react';
 import { toast } from 'sonner';
+import { feishuService } from '../services/feishuService';
 import { check } from '@tauri-apps/plugin-updater';
 import { getVersion } from '@tauri-apps/api/app';
 import { relaunch } from '@tauri-apps/plugin-process';
 
 const Settings = () => {
-    const { settings, updateSettings } = useSettings();
+    const { settings, updateSettings, feishuConfig, updateFeishuConfig } = useSettings();
     const [formData, setFormData] = useState({
         system_name: '',
         system_subtitle: '',
         page_title: '',
         app_icon: ''
     });
+    const [feishuForm, setFeishuForm] = useState({
+        appId: '',
+        appSecret: '',
+        appToken: ''
+    });
     const [isSaving, setIsSaving] = useState(false);
+    const [isInitializing, setIsInitializing] = useState(false);
     const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
     const [appVersion, setAppVersion] = useState('');
 
@@ -29,6 +36,12 @@ const Settings = () => {
             });
         }
     }, [settings]);
+
+    useEffect(() => {
+        if (feishuConfig) {
+            setFeishuForm(feishuConfig);
+        }
+    }, [feishuConfig]);
 
     useEffect(() => {
         getVersion().then(setAppVersion);
@@ -103,6 +116,72 @@ const Settings = () => {
         }
     };
 
+    const handleFeishuSave = () => {
+        updateFeishuConfig(feishuForm);
+        toast.success('飞书配置已保存');
+    };
+
+    const handleTestConnection = async () => {
+        if (!feishuForm.appId || !feishuForm.appSecret) {
+            toast.error('请填写 App ID 和 App Secret');
+            return;
+        }
+        try {
+            const success = await feishuService.testConnection(feishuForm);
+            if (success) {
+                toast.success('连接成功！');
+            } else {
+                toast.error('连接失败，请检查凭证');
+            }
+        } catch (e) {
+            console.error(e);
+            const msg = e.message || (typeof e === 'object' ? JSON.stringify(e) : String(e));
+            toast.error('连接错误: ' + msg);
+        }
+    };
+
+    const handleInitializeTables = async () => {
+        if (!feishuForm.appId || !feishuForm.appSecret || !feishuForm.appToken) {
+            toast.error('请填写完整配置（ID, Secret, Token）');
+            return;
+        }
+
+        setIsInitializing(true);
+        const toastId = toast.loading('正在检查并创建飞书表格结构...');
+        try {
+            await feishuService.createTables(feishuForm);
+            toast.success('表格检查/创建成功！字段已修复', { id: toastId });
+        } catch (e) {
+            console.error(e);
+            let msg = e.message;
+            if (!msg && typeof e === 'object') msg = JSON.stringify(e);
+            if (!msg) msg = String(e);
+
+            toast.error('创建失败: ' + msg, { id: toastId });
+        } finally {
+            setIsInitializing(false);
+        }
+    };
+
+    const handlePushData = async () => {
+        if (!feishuForm.appId || !feishuForm.appSecret || !feishuForm.appToken) {
+            toast.error('配置不完整');
+            return;
+        }
+
+        setIsInitializing(true); // Re-use loading state
+        const toastId = toast.loading('正在将本地数据上传到飞书...');
+        try {
+            const stats = await feishuService.pushData(feishuForm);
+            toast.success(`上传成功！新增 ${stats.addedContacts} 个客户`, { id: toastId });
+        } catch (e) {
+            console.error(e);
+            toast.error('上传失败: ' + e.message, { id: toastId });
+        } finally {
+            setIsInitializing(false);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSaving(true);
@@ -121,6 +200,91 @@ const Settings = () => {
                     <p className="text-slate-500 dark:text-slate-400 mt-1">
                         自定义系统的基本配置
                     </p>
+                </div>
+            </div>
+
+            {/* Feishu Config Section */}
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-2 mb-4">
+                    <Cloud className="w-5 h-5 text-blue-600" />
+                    <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">多端同步配置 (飞书 / Lark)</h2>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            App ID (企业自建应用)
+                        </label>
+                        <input
+                            type="text"
+                            value={feishuForm.appId}
+                            onChange={(e) => setFeishuForm({ ...feishuForm, appId: e.target.value })}
+                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="cli_..."
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            App Secret
+                        </label>
+                        <input
+                            type="password"
+                            value={feishuForm.appSecret}
+                            onChange={(e) => setFeishuForm({ ...feishuForm, appSecret: e.target.value })}
+                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="*************"
+                        />
+                    </div>
+
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            应用 Token (App Token / Base Token)
+                        </label>
+                        <p className="text-xs text-gray-500 mb-2">多维表格链接中 "base" 开头的一串字符</p>
+                        <input
+                            type="text"
+                            value={feishuForm.appToken}
+                            onChange={(e) => setFeishuForm({ ...feishuForm, appToken: e.target.value })}
+                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="bascn............"
+                        />
+                    </div>
+                </div>
+
+                <div className="mt-6 flex gap-3">
+                    <button
+                        onClick={handleFeishuSave}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    >
+                        <Save className="w-4 h-4" />
+                        保存配置
+                    </button>
+                    <button
+                        onClick={handleTestConnection}
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 transition"
+                    >
+                        <RefreshCw className="w-4 h-4" />
+                        测试连接
+                    </button>
+
+                    <button
+                        onClick={handleInitializeTables}
+                        disabled={isInitializing}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition"
+                    >
+                        <RefreshCw className={cn("w-4 h-4", isInitializing && "animate-spin")} />
+                        {isInitializing ? '创建中...' : '一键初始化表格'}
+                    </button>
+
+                    <button
+                        onClick={handlePushData}
+                        disabled={isInitializing}
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition"
+                    >
+                        <Upload className={cn("w-4 h-4", isInitializing && "animate-spin")} />
+                        上传本地数据
+                    </button>
                 </div>
             </div>
 

@@ -45,7 +45,19 @@ const applyBranding = async (settings) => {
 
 export const SettingsProvider = ({ children }) => {
     const [settings, setSettings] = useState(defaultSettings);
+    const [feishuConfig, setFeishuConfig] = useState(() => {
+        const saved = localStorage.getItem('feishuConfig');
+        return saved ? JSON.parse(saved) : { appId: '', appSecret: '', baseToken: '' };
+    });
     const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        localStorage.setItem('feishuConfig', JSON.stringify(feishuConfig));
+    }, [feishuConfig]);
+
+    const updateFeishuConfig = (newConfig) => {
+        setFeishuConfig(prev => ({ ...prev, ...newConfig }));
+    };
 
     const fetchSettings = async () => {
         try {
@@ -99,7 +111,13 @@ export const SettingsProvider = ({ children }) => {
     };
 
     return (
-        <SettingsContext.Provider value={{ settings, updateSettings, loading }}>
+        <SettingsContext.Provider value={{
+            settings,
+            updateSettings,
+            loading,
+            feishuConfig,
+            updateFeishuConfig
+        }}>
             {children}
         </SettingsContext.Provider>
     );

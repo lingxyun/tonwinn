@@ -115,7 +115,9 @@ const Customers = () => {
 
     // Detail View
     if (selectedCustomer) {
-        const customerTx = transactions.filter(t => t.customerId === selectedCustomer.id).sort((a, b) => new Date(b.date) - new Date(a.date));
+        // Stats logic
+        const customerTx = transactions.filter(t => t.customerId === selectedCustomer.id)
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
 
         return (
             <div className="space-y-6">
@@ -459,7 +461,7 @@ const Customers = () => {
                                             <div>
                                                 <div className="text-lg font-medium text-slate-900 dark:text-white flex items-center gap-2">
                                                     {customer.name}
-                                                    <span className="px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-500">
+                                                    <span className="text-xs font-medium px-2 py-0.5 bg-slate-100 dark:bg-white/5 text-slate-500 rounded-md">
                                                         {transactions?.filter(t => t.customerId === customer.id).length || 0} 订单
                                                     </span>
                                                 </div>

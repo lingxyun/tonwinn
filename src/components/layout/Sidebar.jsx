@@ -1,14 +1,39 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, Settings, CreditCard, Sun, Moon, LogOut, ChevronLeft, ChevronRight, ChevronDown, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, CreditCard, Sun, Moon, LogOut, ChevronLeft, ChevronRight, ChevronDown, Menu, X, Cloud } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useSettings } from '../../context/SettingsContext';
+import { feishuService } from '../../services/feishuService';
+import { toast } from 'sonner';
+import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 
 const Sidebar = ({ isDarkMode, toggleTheme, isCollapsed, setIsCollapsed }) => {
     const { user, logout } = useAuth();
-    const { settings } = useSettings();
+    const { settings, feishuConfig } = useSettings();
+    const { refreshData } = useData();
+    const [isSyncing, setIsSyncing] = useState(false);
+
+    const handleSync = async () => {
+        if (!feishuConfig?.appId || !feishuConfig?.appSecret || !feishuConfig?.appToken) {
+            toast.error("请先在设置中配置飞书参数");
+            return;
+        }
+
+        setIsSyncing(true);
+        const toastId = toast.loading("正在与飞书云端同步...");
+
+        try {
+            const { contacts, transactions } = await feishuService.pullData(feishuConfig);
+            toast.success(`同步成功! 拉取到 ${contacts.length} 个往来, ${transactions.length} 条交易`, { id: toastId });
+        } catch (e) {
+            console.error(e);
+            toast.error(`同步失败: ${e.message}`, { id: toastId });
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     const [openMenus, setOpenMenus] = useState({ 'orders': true });
     // The diff also implies these states, but they are not directly related to the instruction's core task of filtering navItems.
@@ -195,6 +220,18 @@ const Sidebar = ({ isDarkMode, toggleTheme, isCollapsed, setIsCollapsed }) => {
 
             <div className="p-4 border-t border-slate-100 dark:border-white/5 space-y-4">
                 <button
+                    onClick={handleSync}
+                    disabled={isSyncing}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
+                >
+                    <div className={cn("relative transition-transform group-hover:scale-110", isSyncing && "animate-pulse")}>
+                        <Cloud className="w-5 h-5 shrink-0 text-blue-500" />
+                        {isSyncing && <span className="absolute inset-0 animate-ping rounded-full bg-blue-400 opacity-20"></span>}
+                    </div>
+                    {!isCollapsed && <span className="font-medium whitespace-nowrap text-blue-600 dark:text-blue-400">云端同步</span>}
+                </button>
+
+                <button
                     onClick={toggleTheme}
                     className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
@@ -222,6 +259,7 @@ const Sidebar = ({ isDarkMode, toggleTheme, isCollapsed, setIsCollapsed }) => {
                                 <LogOut size={10} strokeWidth={3} />
                                 退出系统
                             </button>
+                            <div className="mt-1 text-[8px] text-slate-400 font-mono">v0.1.78 (Bidirectional Fix)</div>
                         </motion.div>
                     )}
                 </div>

@@ -96,6 +96,12 @@ pub fn get_migrations() -> Vec<Migration> {
             description: "add categoryIds column to customers for multi-select",
             sql: "ALTER TABLE customers ADD COLUMN categoryIds TEXT; UPDATE customers SET categoryIds = CAST(categoryId AS TEXT) WHERE categoryId IS NOT NULL;",
             kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 6,
+            description: "add feishu_id column to customers and transactions",
+            sql: "ALTER TABLE customers ADD COLUMN feishu_id TEXT; ALTER TABLE transactions ADD COLUMN feishu_id TEXT;",
+            kind: MigrationKind::Up,
         }
     ]
 }

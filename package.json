@@ -1,7 +1,7 @@
 {
   "name": "financial-system",
   "private": true,
-  "version": "0.1.62",
+  "version": "0.1.78",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,9 +14,11 @@
     "@tauri-apps/api": "^2.3.1",
     "@tauri-apps/plugin-dialog": "~2.4.2",
     "@tauri-apps/plugin-fs": "~2.4.4",
+    "@tauri-apps/plugin-http": "^2.5.4",
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-sql": "~2.3.1",
     "@tauri-apps/plugin-updater": "^2.9.0",
+    "axios": "^1.13.2",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.26",
     "html2canvas": "^1.4.1",

@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "鱼跃CRM",
-  "version": "0.1.62",
+  "version": "0.1.78",
   "identifier": "com.tonwin.financial",
   "build": {
     "frontendDist": "../dist",

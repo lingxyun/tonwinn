@@ -8,6 +8,11 @@ export default defineConfig(({ mode }) => ({
   server: {
     port: 5177,
     proxy: {
+      '/feishu-api': {
+        target: 'https://open.feishu.cn',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/feishu-api/, '')
+      },
       '/api': {
         target: 'http://localhost:3002',
         changeOrigin: true,
