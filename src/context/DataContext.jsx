@@ -251,24 +251,38 @@ export const DataProvider = ({ children }) => {
     const syncTimeoutRef = useRef(null);
 
     const triggerAutoPush = async () => {
-        if (!feishuConfig?.appId) return;
+        console.log('🔄 triggerAutoPush called', { hasConfig: !!feishuConfig?.appId });
+        if (!feishuConfig?.appId) {
+            console.warn('⚠️ Auto Push skipped: Feishu config not loaded');
+            return;
+        }
 
         // Clear previous pending sync
-        if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+        if (syncTimeoutRef.current) {
+            console.log('⏱️ Clearing previous sync timeout');
+            clearTimeout(syncTimeoutRef.current);
+        }
 
         syncTimeoutRef.current = setTimeout(async () => {
-            if (isSyncing.current) return; // Still syncing, skip this turn (or could queue better, but skip is safer for dupes)
+            if (isSyncing.current) {
+                console.warn('⚠️ Auto Push skipped: Already syncing');
+                return;
+            }
 
             isSyncing.current = true;
-            console.log('Auto Pushing (Debounced)...');
+            console.log('🚀 Auto Pushing (Debounced)...');
             try {
                 await feishuService.pushData(feishuConfig);
+                console.log('✅ Auto Push completed successfully');
             } catch (e) {
-                console.warn('Auto Push Failed:', e);
+                console.error('❌ Auto Push Failed:', e);
+                toast.error('自动同步失败，请手动同步');
             } finally {
                 isSyncing.current = false;
             }
         }, 3000); // Increased to 3s to allow more batching
+
+        console.log('⏱️ Auto Push scheduled (3s delay)');
     };
 
     const refreshData = async () => {
