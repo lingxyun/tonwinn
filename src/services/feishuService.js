@@ -583,12 +583,12 @@ export const feishuService = {
             // 1. Fetch ALL existing tables with pagination
             let listRes = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables?page_size=100`, { method: 'GET', headers });
             let listData = await listRes.json();
-            let allItems = listData.data?.items || [];
 
-            // Check permissions eagerly
-            if (listData.code === 91403 || (listData.msg && listData.msg.includes('Forbidden'))) {
-                throw new Error(`权限不足 (代码: 91403)。\n请检查：\n1. 是否已将机器人添加到表格中？\n2. 是否授予了“管理者”权限？\n(请参考教程第四步)`);
+            if (listData.code !== 0) {
+                throw new Error(`获取飞书表格列表失败: ${listData.msg} (代码: ${listData.code})。如果是 99991403，说明本月 API 调用次数已耗尽。`);
             }
+
+            let allItems = listData.data?.items || [];
 
             // Loop pages
             while (listData.data?.has_more) {
