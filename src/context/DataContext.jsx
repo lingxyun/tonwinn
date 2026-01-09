@@ -247,8 +247,11 @@ export const DataProvider = ({ children }) => {
         if (hasChanges) refreshData();
         return {
             added: catsAdded ? 'Categories' : '',
+            added: catsAdded ? 'Categories' : '',
             deleted: txToDelete.length + custToDelete.length,
-            updated: hasChanges
+            updated: hasChanges,
+            cloudTxCount: fTransactions.length,
+            cloudContactCount: fContacts.length
         };
     };
 

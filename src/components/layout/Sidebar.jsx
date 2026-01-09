@@ -26,12 +26,15 @@ const Sidebar = ({ isDarkMode, toggleTheme, isCollapsed, setIsCollapsed }) => {
 
         try {
             const stats = await syncFromCloud(feishuConfig);
-            if (stats?.deleted > 0) {
-                toast.success(`同步成功！已删除 ${stats.deleted} 条记录`, { id: toastId });
-            } else if (stats?.updated) {
-                toast.success(`同步成功！数据已更新`, { id: toastId });
+            if (stats) {
+                const msg = `同步成功！云端订单:${stats.cloudTxCount}条 | 本地删除:${stats.deleted}条`;
+                if (stats.deleted > 0 || stats.updated) {
+                    toast.success(msg, { id: toastId, duration: 5000 });
+                } else {
+                    toast.success(msg + " (无变更)", { id: toastId, duration: 5000 });
+                }
             } else {
-                toast.success(`同步完成，暂无变更`, { id: toastId });
+                toast.success(`同步完成`, { id: toastId });
             }
         } catch (e) {
             console.error(e);
