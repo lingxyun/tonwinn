@@ -598,6 +598,7 @@ export const feishuService = {
             }
 
             if (listData.code === 0 || allItems.length > 0) {
+                console.log(`🔎 Found ${allItems.length} tables:`, allItems.map(t => t.name).join(', '));
                 const found = allItems.find(t => t.name.trim() === name.trim() || t.name.includes(name));
                 if (found) tableId = found.table_id;
             }
@@ -617,13 +618,20 @@ export const feishuService = {
                     tableId = data.data.table_id;
                 } else if (data.code === 1254001 || data.code === 1254013) {
                     // Retry find if creation race condition or name conflict implies existence
-                    const retryRes = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables`, { method: 'GET', headers });
-                    const retryData = await retryRes.json();
-                    const retryFound = (retryData.data?.items || []).find(it => it.name.includes(name));
+                    let retryRes = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables?page_size=100`, { method: 'GET', headers });
+                    let retryData = await retryRes.json();
+                    let retryItems = retryData.data?.items || [];
+                    while (retryData.data?.has_more) {
+                        retryRes = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables?page_size=100&page_token=${retryData.data.page_token}`, { method: 'GET', headers });
+                        retryData = await retryRes.json();
+                        if (retryData.data?.items) retryItems = retryItems.concat(retryData.data.items);
+                    }
+
+                    const retryFound = retryItems.find(it => it.name.trim() === name.trim() || it.name.includes(name));
                     if (retryFound) tableId = retryFound.table_id;
                 }
 
-                if (!tableId) throw new Error(`创建表 [${name}] 失败: ${data.msg} (代码:${data.code})`);
+                if (!tableId) throw new Error(`创建表 [${name}] 失败: ${data.msg} (代码:${data.code}) - 已扫描表: ${allItems.map(t => t.name).join(',')}`);
             }
 
             // 3. Ensure Fields Exist
