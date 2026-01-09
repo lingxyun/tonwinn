@@ -25,8 +25,14 @@ const Sidebar = ({ isDarkMode, toggleTheme, isCollapsed, setIsCollapsed }) => {
         const toastId = toast.loading("正在与飞书云端同步...");
 
         try {
-            await syncFromCloud(feishuConfig);
-            toast.success(`同步成功！数据已更新`, { id: toastId });
+            const stats = await syncFromCloud(feishuConfig);
+            if (stats?.deleted > 0) {
+                toast.success(`同步成功！已删除 ${stats.deleted} 条记录`, { id: toastId });
+            } else if (stats?.updated) {
+                toast.success(`同步成功！数据已更新`, { id: toastId });
+            } else {
+                toast.success(`同步完成，暂无变更`, { id: toastId });
+            }
         } catch (e) {
             console.error(e);
             toast.error(`同步失败: ${e.message}`, { id: toastId });

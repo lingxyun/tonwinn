@@ -111,7 +111,7 @@ export const DataProvider = ({ children }) => {
 
             if (result) {
                 console.log(`📥 Downloaded: ${result.transactions?.length || 0} Tx, ${result.contacts?.length || 0} Contacts`);
-                await savePulledData(result.contacts || [], result.transactions || [], result.categories || []);
+                return await savePulledData(result.contacts || [], result.transactions || [], result.categories || []);
             } else {
                 console.warn('⚠️ Sync returned empty result');
             }
@@ -285,6 +285,11 @@ export const DataProvider = ({ children }) => {
         }
 
         if (hasChanges) refreshData();
+        return {
+            added: catsAdded ? 'Categories' : '',
+            deleted: txToDelete.length + custToDelete.length,
+            updated: hasChanges
+        };
     };
 
     // Helper: Auto Push
