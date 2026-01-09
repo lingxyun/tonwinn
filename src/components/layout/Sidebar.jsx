@@ -12,7 +12,7 @@ import { useAuth } from '../../context/AuthContext';
 const Sidebar = ({ isDarkMode, toggleTheme, isCollapsed, setIsCollapsed }) => {
     const { user, logout } = useAuth();
     const { settings, feishuConfig } = useSettings();
-    const { refreshData } = useData();
+    const { refreshData, syncFromCloud } = useData();
     const [isSyncing, setIsSyncing] = useState(false);
 
     const handleSync = async () => {
@@ -25,8 +25,8 @@ const Sidebar = ({ isDarkMode, toggleTheme, isCollapsed, setIsCollapsed }) => {
         const toastId = toast.loading("正在与飞书云端同步...");
 
         try {
-            const { contacts, transactions } = await feishuService.pullData(feishuConfig);
-            toast.success(`同步成功! 拉取到 ${contacts.length} 个往来, ${transactions.length} 条交易`, { id: toastId });
+            await syncFromCloud(feishuConfig);
+            toast.success(`同步成功！数据已更新`, { id: toastId });
         } catch (e) {
             console.error(e);
             toast.error(`同步失败: ${e.message}`, { id: toastId });

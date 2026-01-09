@@ -101,10 +101,12 @@ export const DataProvider = ({ children }) => {
         if (isSyncing.current) return;
         isSyncing.current = true;
         try {
-            console.log('Auto Pulling from Feishu...');
+            console.log('🔄 Auto Pulling from Feishu...');
             const result = await feishuService.pullData(config);
-            if (result && (result.contacts?.length > 0 || result.transactions?.length > 0 || result.categories?.length > 0)) {
-                await savePulledData(result.contacts, result.transactions, result.categories);
+            // ALWAYS call savePulledData, even if arrays are empty (needed for deletion sync)
+            if (result) {
+                await savePulledData(result.contacts || [], result.transactions || [], result.categories || []);
+                console.log('✅ Auto Pull completed');
             }
         } catch (e) {
             console.warn('Auto Pull Failed (Silent):', e);
@@ -1015,6 +1017,7 @@ export const DataProvider = ({ children }) => {
             setLoading,
             importTransactionsFromCSV,
             refreshData,
+            syncFromCloud: autoPullCloud,  // Export for manual sync from Sidebar
             stats: getStats()
         }}>
             {children}
