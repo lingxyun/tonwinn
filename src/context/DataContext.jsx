@@ -792,20 +792,36 @@ export const DataProvider = ({ children }) => {
 
             // 2. Insert Customers
             console.log(`Importing ${source.customers.length} customers...`);
+            let custFailures = 0;
             for (const cust of source.customers) {
-                await db.execute(
-                    'INSERT INTO customers (id, name, email, phone, address, balance, status, created_at, role, categoryIds) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                    [cust.id, cust.name, cust.email || '', cust.phone, cust.address || '', cust.balance || 0, cust.status || 'Active', cust.created_at || new Date().toISOString(), cust.role || 'Customer', cust.categoryIds || (cust.categoryId ? JSON.stringify([cust.categoryId]) : '[]')]
-                );
+                try {
+                    await db.execute(
+                        'INSERT OR REPLACE INTO customers (id, name, email, phone, address, balance, status, created_at, role, categoryIds) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [cust.id, cust.name, cust.email || '', cust.phone, cust.address || '', cust.balance || 0, cust.status || 'Active', cust.created_at || new Date().toISOString(), cust.role || 'Customer', cust.categoryIds || (cust.categoryId ? JSON.stringify([cust.categoryId]) : '[]')]
+                    );
+                } catch (e) {
+                    console.error(`Failed to insert customer ${cust.name}:`, e);
+                    custFailures++;
+                }
             }
 
             // 3. Insert Transactions
             console.log(`Importing ${source.transactions.length} transactions...`);
+            let txFailures = 0;
             for (const tx of source.transactions) {
-                await db.execute(
-                    'INSERT INTO transactions (id, customerId, amount, type, category, date, description, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                    [tx.id, tx.customerId, tx.amount, tx.type, tx.category || 'Uncategorized', tx.date, tx.description || '', tx.status || 'Completed', tx.created_at || new Date().toISOString()]
-                );
+                try {
+                    await db.execute(
+                        'INSERT OR REPLACE INTO transactions (id, customerId, amount, type, category, date, description, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [tx.id, tx.customerId, tx.amount, tx.type, tx.category || 'Uncategorized', tx.date, tx.description || '', tx.status || 'Completed', tx.created_at || new Date().toISOString()]
+                    );
+                } catch (e) {
+                    console.error(`Failed to insert transaction ${tx.id}:`, e);
+                    txFailures++;
+                }
+            }
+
+            if (custFailures > 0 || txFailures > 0) {
+                toast.warning(`导入完成，但有部分数据跳过 (客户: ${custFailures}, 订单: ${txFailures})`, { duration: 5000 });
             }
 
             // 4. Refresh State
