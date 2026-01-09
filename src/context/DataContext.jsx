@@ -787,8 +787,11 @@ export const DataProvider = ({ children }) => {
             }
 
             // 1. Clear existing
+            await db.execute('PRAGMA foreign_keys = OFF');
             await db.execute('DELETE FROM transactions');
             await db.execute('DELETE FROM customers');
+
+            let firstError = '';
 
             // 2. Insert Customers
             console.log(`Importing ${source.customers.length} customers...`);
@@ -801,6 +804,7 @@ export const DataProvider = ({ children }) => {
                     );
                 } catch (e) {
                     console.error(`Failed to insert customer ${cust.name}:`, e);
+                    if (!firstError) firstError = `Cust: ${e.message}`;
                     custFailures++;
                 }
             }
@@ -812,12 +816,19 @@ export const DataProvider = ({ children }) => {
                 try {
                     await db.execute(
                         'INSERT OR REPLACE INTO transactions (id, customerId, amount, type, category, date, description, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        [tx.id, tx.customerId, tx.amount, tx.type, tx.category || 'Uncategorized', tx.date, tx.description || '', tx.status || 'Completed', tx.created_at || new Date().toISOString()]
+                        [tx.id, tx.customerId, tx.amount, tx.type, tx.category || 'Uncategorized', tx.date || new Date().toISOString().split('T')[0], tx.description || '', tx.status || 'Completed', tx.created_at || new Date().toISOString()]
                     );
                 } catch (e) {
                     console.error(`Failed to insert transaction ${tx.id}:`, e);
+                    if (!firstError) firstError = `Tx: ${e.message}`;
                     txFailures++;
                 }
+            }
+
+            await db.execute('PRAGMA foreign_keys = ON');
+
+            if (custFailures > 0 || txFailures > 0) {
+                toast.error(`导入包含错误 (C:${custFailures}, T:${txFailures})。首个错误: ${firstError}`, { duration: 10000 });
             }
 
             if (custFailures > 0 || txFailures > 0) {
