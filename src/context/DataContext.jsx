@@ -97,23 +97,33 @@ export const DataProvider = ({ children }) => {
     }, [feishuConfig]);
 
     // Helper: Auto Pull
-    const autoPullCloud = async (config) => {
-        if (isSyncing.current) return;
+    // Helper: Unified Sync Handler (Unified Logic)
+    const syncHandler = async (config, isManual) => {
+        if (isSyncing.current) {
+            if (isManual) toast.warning('🔄 同步正在运行中，请稍候...');
+            return;
+        }
         isSyncing.current = true;
+
         try {
-            console.log('🔄 Auto Pulling from Feishu...');
+            console.log(`☁️ Sync Started (${isManual ? 'Manual' : 'Auto'})`);
             const result = await feishuService.pullData(config);
-            // ALWAYS call savePulledData, even if arrays are empty (needed for deletion sync)
+
             if (result) {
+                console.log(`📥 Downloaded: ${result.transactions?.length || 0} Tx, ${result.contacts?.length || 0} Contacts`);
                 await savePulledData(result.contacts || [], result.transactions || [], result.categories || []);
-                console.log('✅ Auto Pull completed');
+            } else {
+                console.warn('⚠️ Sync returned empty result');
             }
         } catch (e) {
-            console.warn('Auto Pull Failed (Silent):', e);
+            console.error('❌ Sync Failed:', e);
+            if (isManual) throw e;
         } finally {
             isSyncing.current = false;
         }
     };
+
+    const autoPullCloud = (config) => syncHandler(config, false);
 
     // Helper: Save Pulled Data (Merge logic)
     const savePulledData = async (fContacts = [], fTransactions = [], fCategories = []) => {
@@ -251,11 +261,14 @@ export const DataProvider = ({ children }) => {
         const cloudCustomerIds = new Set(fContacts.map(fc => fc.feishu_id).filter(Boolean));
 
         // Delete transactions that were removed from Feishu
+        // Delete transactions that were removed from Feishu
         const txToDelete = latestTx.filter(t => t.feishu_id && !cloudTxIds.has(t.feishu_id));
+        console.log(`🗑️ Deletion Check: Cloud has ${cloudTxIds.size} synced Tx. Local has ${latestTx.filter(t => t.feishu_id).length} synced Tx. Plan to delete ${txToDelete.length}.`);
+
         for (const tx of txToDelete) {
             await db.execute('DELETE FROM transactions WHERE id = ?', [tx.id]);
             hasChanges = true;
-            console.log(`🗑️ Deleted transaction (removed from Feishu): ${tx.id}`);
+            console.log(`🗑️ Deleted transaction (removed from Feishu): ${tx.id} / FeishuID: ${tx.feishu_id}`);
         }
 
         // Delete customers that were removed from Feishu (only if they have no local transactions)
@@ -1017,7 +1030,7 @@ export const DataProvider = ({ children }) => {
             setLoading,
             importTransactionsFromCSV,
             refreshData,
-            syncFromCloud: autoPullCloud,  // Export for manual sync from Sidebar
+            syncFromCloud: (config) => syncHandler(config, true), // Export manual sync (throws error)
             stats: getStats()
         }}>
             {children}
