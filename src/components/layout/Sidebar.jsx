@@ -97,23 +97,35 @@ const Sidebar = ({ isDarkMode, toggleTheme, isCollapsed, setIsCollapsed }) => {
                     )}
                 </AnimatePresence>
 
-                {!isCollapsed && (
-                    <button
-                        onClick={() => setIsCollapsed(!isCollapsed)}
-                        className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-primary transition-colors"
-                    >
-                        <ChevronLeft size={16} />
-                    </button>
-                )}
+                <AnimatePresence>
+                    {!isCollapsed && (
+                        <motion.button
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            transition={{ duration: 0.2 }}
+                            onClick={() => setIsCollapsed(!isCollapsed)}
+                            className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-primary transition-colors"
+                        >
+                            <ChevronLeft size={16} />
+                        </motion.button>
+                    )}
+                </AnimatePresence>
             </div>
-            {isCollapsed && (
-                <button
-                    onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="absolute -right-3 top-20 p-1.5 rounded-full bg-white dark:bg-slate-800 text-slate-500 hover:text-primary transition-all border border-slate-200 dark:border-slate-700 shadow-sm z-50"
-                >
-                    <ChevronRight size={12} />
-                </button>
-            )}
+            <AnimatePresence>
+                {isCollapsed && (
+                    <motion.button
+                        initial={{ opacity: 0, scale: 0, x: -10 }}
+                        animate={{ opacity: 1, scale: 1, x: 0 }}
+                        exit={{ opacity: 0, scale: 0, x: -10 }}
+                        transition={{ duration: 0.2 }}
+                        onClick={() => setIsCollapsed(!isCollapsed)}
+                        className="absolute -right-3 top-20 p-1.5 rounded-full bg-white dark:bg-slate-800 text-slate-500 hover:text-primary transition-all border border-slate-200 dark:border-slate-700 shadow-sm z-50"
+                    >
+                        <ChevronRight size={12} />
+                    </motion.button>
+                )}
+            </AnimatePresence>
 
             <nav className="flex-1 px-4 space-y-2 py-6 overflow-y-auto custom-scrollbar">
                 {filteredNavItems.map((item) => {

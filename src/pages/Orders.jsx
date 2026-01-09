@@ -60,6 +60,10 @@ const Orders = () => {
     const [filterAmount, setFilterAmount] = useState({ min: '', max: '' });
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
 
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
     const filteredTx = txList.filter(tx => {
         const matchesSearch = tx.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
             tx.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -78,6 +82,19 @@ const Orders = () => {
 
         return matchesSearch && matchesType && matchesStatus && matchesCategory && matchesCustomer && matchesAmount && matchesDate;
     });
+
+    // Reset pagination when filters change
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, filterType, filterStatus, filterCategory, filterCustomer, filterAmount, dateRange]);
+
+    // Pagination Logic
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = filteredTx.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredTx.length / itemsPerPage);
+
+    const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
     // Unique Categories for Filter Dropdown
     const categories = Array.from(new Set(txList.map(tx => tx.category).filter(Boolean)));
@@ -351,7 +368,7 @@ const Orders = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                            {filteredTx.map((tx) => {
+                            {currentItems.map((tx) => {
                                 const customer = customers.find(c => c.id === tx.customerId);
                                 return (
                                     <tr
@@ -441,7 +458,7 @@ const Orders = () => {
 
                 {/* Mobile Card View */}
                 <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
-                    {filteredTx.map((tx) => {
+                    {currentItems.map((tx) => {
                         const customer = customers.find(c => c.id === tx.customerId);
                         return (
                             <div
@@ -519,6 +536,40 @@ const Orders = () => {
                     })}
                 </div>
             </div>
+
+            {/* Pagination Controls */}
+            {filteredTx.length > 0 && (
+                <div className="flex justify-between items-center bg-white dark:bg-slate-900 px-4 py-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
+                    <div className="text-sm text-slate-500 dark:text-slate-400">
+                        显示第 <span className="font-bold text-slate-900 dark:text-white">{indexOfFirstItem + 1}</span> 到 <span className="font-bold text-slate-900 dark:text-white">{Math.min(indexOfLastItem, filteredTx.length)}</span> 条，共 <span className="font-bold text-slate-900 dark:text-white">{filteredTx.length}</span> 条
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => paginate(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                            上一页
+                        </button>
+                        <div className="flex items-center gap-1">
+                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                return null;
+                            })}
+                            <span className="text-sm font-bold text-primary px-2">
+                                第 {currentPage} 页 / 共 {totalPages} 页
+                            </span>
+                        </div>
+                        <button
+                            onClick={() => paginate(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                            下一页
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Edit Modal */}
             <Modal
                 isOpen={isEditModalOpen}
@@ -542,7 +593,7 @@ const Orders = () => {
                 transaction={selectedInvoiceTx}
                 customer={selectedInvoiceTx ? customers.find(c => c.id === selectedInvoiceTx.customerId) : null}
             />
-        </div>
+        </div >
     );
 };
 

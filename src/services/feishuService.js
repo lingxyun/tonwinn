@@ -59,8 +59,9 @@ export const feishuService = {
         const items = tablesData.data?.items || [];
 
         return {
-            contactTable: items.find(t => t.name.includes("往来") || t.name.includes("Contacts") || t.name.includes("客户")),
-            txTable: items.find(t => t.name.includes("交易") || t.name.includes("Transactions") || t.name.includes("收支"))
+            customerTable: items.find(t => t.name.includes("客户列表") || t.name.includes("Customer")),
+            supplierTable: items.find(t => t.name.includes("供货商列表") || t.name.includes("Supplier")),
+            txTable: items.find(t => t.name.includes("收支记录") || t.name.includes("Transactions"))
         };
     },
 
@@ -72,81 +73,230 @@ export const feishuService = {
         const accessToken = await feishuService.getTenantAccessToken(appId, appSecret);
         const headers = { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' };
 
+        // 0. Ensure Schema & Get Types
+        const schemas = await feishuService.createTables(config);
+
         // 1. Get Feishu Tables
-        const { contactTable, txTable } = await feishuService.findTableIds(appToken, accessToken);
-        if (!contactTable || !txTable) throw new Error("Cloud tables not found. Please click 'Initialize Tables' first.");
+        const { customerTable, supplierTable, txTable } = await feishuService.findTableIds(appToken, accessToken);
+        if (!customerTable || !supplierTable || !txTable) throw new Error("Cloud tables not found. Please click 'Initialize Tables' first.");
 
         // 2. Get Local Data
         const localCustomers = await db.select("SELECT * FROM customers");
         const localTx = await db.select("SELECT * FROM transactions");
+        const localCategories = await db.select("SELECT * FROM categories");
 
-        // 3. Get Existing Feishu Data (Contacts)
-        const fContactsRes = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${contactTable.table_id}/records?page_size=500`, { headers });
-        const fContactsData = await fContactsRes.json();
-        const remoteContacts = fContactsData.data?.items || [];
-        const remoteContactsById = new Map(remoteContacts.map(i => [i.record_id, i]));
-        const remoteContactsByName = new Map(remoteContacts.map(i => [i.fields["姓名"], i]));
+        // Helper: Ensure Select Options Exist (Auto-Add missing options)
+        const ensureOptions = async (tableId, fieldName, requiredOptions) => {
+            if (!requiredOptions || requiredOptions.length === 0) return;
 
-        // 4. Upload/Update Customers
-        let addedCount = 0;
-        for (const c of localCustomers) {
-            const fields = {
-                "姓名": c.name,
-                "电话": c.phone || "",
-                "类型": c.role === "Supplier" ? "供货商" : "客户",
-                "余额": c.balance || 0
-            };
+            try {
+                const res = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${tableId}/fields`, { headers });
+                const data = await res.json();
+                // Robust lookup: try trimmed match first
+                const field = (data.data?.items || []).find(f => f.field_name && f.field_name.trim() === fieldName.trim());
 
-            let targetRecordId = null;
+                // Only update if Select (3) or MultiSelect (4)
+                if (!field || (field.type !== 3 && field.type !== 4)) return;
 
-            // Try matching by ID first
-            if (c.feishu_id && remoteContactsById.has(c.feishu_id)) {
-                targetRecordId = c.feishu_id;
-            }
-            // Then try matching by Name
-            else if (remoteContactsByName.has(c.name)) {
-                targetRecordId = remoteContactsByName.get(c.name).record_id;
-            }
+                const existingOptions = field.property?.options || [];
+                const existingNames = new Set(existingOptions.map(o => (o.name || "").trim()));
 
-            if (targetRecordId) {
-                // UPDATE (PATCH)
-                await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${contactTable.table_id}/records/${targetRecordId}`, {
-                    method: 'PUT', headers, // Using PUT for full record replace or PATCH for partial
-                    body: JSON.stringify({ fields })
+                const newOptions = requiredOptions.filter(opt => opt && !existingNames.has(String(opt).trim()));
+                if (newOptions.length === 0) return;
+
+                console.log(`Auto-adding options to [${fieldName}]:`, newOptions);
+                const updatedOptions = [...existingOptions, ...newOptions.map(name => ({ name: String(name).trim() }))];
+
+                const patchRes = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${tableId}/fields/${field.field_id}`, {
+                    method: 'PUT', headers,
+                    body: JSON.stringify({
+                        field_name: field.field_name,
+                        type: field.type,
+                        property: { options: updatedOptions }
+                    })
                 });
-                // Link ID if not linked
-                if (c.feishu_id !== targetRecordId) {
-                    await db.execute("UPDATE customers SET feishu_id = ? WHERE id = ?", [targetRecordId, c.id]);
+                const patchData = await patchRes.json();
+                if (patchData.code !== 0) console.warn("Field option update failed:", patchData.msg);
+            } catch (e) {
+                console.error("Failed to update field options:", e);
+            }
+        };
+
+        const allCatNames = localCategories.map(c => c.name.trim());
+        await ensureOptions(customerTable.table_id, "类别", allCatNames);
+        await ensureOptions(supplierTable.table_id, "类别", allCatNames);
+
+        // ONLY push valid categories from management list. 
+        // DO NOT push raw t.category strings as they might contain person names (pollution).
+        await ensureOptions(txTable.table_id, "交易类别", allCatNames);
+
+        // Helper function to sync a list to a table
+        const syncList = async (list, tableId, tableType, fieldSchema) => {
+            if (!tableId) return 0;
+
+            // Get ALL existing remote records (Pagination)
+            let remoteItems = [];
+            let pageToken = "";
+            let hasMore = true;
+
+            while (hasMore) {
+                const query = `page_size=500${pageToken ? `&page_token=${pageToken}` : ''}`;
+                const res = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${tableId}/records?${query}`, { headers });
+                const data = await res.json();
+                if (data.data?.items) {
+                    remoteItems = remoteItems.concat(data.data.items);
                 }
-            } else {
-                // CREATE (POST)
-                const res = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${contactTable.table_id}/records`, {
-                    method: 'POST', headers,
-                    body: JSON.stringify({ fields })
+                hasMore = data.data?.has_more;
+                pageToken = data.data?.page_token;
+            }
+
+            const remoteItemsById = new Map(remoteItems.map(i => [i.record_id, i]));
+            const remoteItemsByName = new Map(remoteItems.map(i => [String(i.fields["姓名"] || i.fields["名称"] || "").trim(), i]));
+            const recordsToCreate = [];
+
+            let count = 0;
+            for (const c of list) {
+                // Map Category IDs to Names (Robust)
+                let categoryNames = [];
+                let ids = [];
+
+                try {
+                    const rawIds = c.categoryIds || c.categoryId || "";
+                    if (typeof rawIds === 'string' && rawIds.startsWith('[')) {
+                        ids = JSON.parse(rawIds);
+                    } else if (typeof rawIds === 'string' && rawIds.includes(',')) {
+                        ids = rawIds.split(',').map(s => s.trim()).filter(Boolean);
+                    } else if (rawIds) {
+                        ids = [rawIds];
+                    }
+                } catch (e) {
+                    if (c.categoryId) ids = [c.categoryId];
+                    else if (c.categoryIds) ids = [c.categoryIds];
+                }
+
+                if (ids.length > 0) {
+                    categoryNames = ids.map(id => {
+                        const cat = localCategories.find(item => String(item.id) === String(id) || String(item.name).trim() === String(id).trim());
+                        return cat ? cat.name.trim() : null;
+                    }).filter(Boolean);
+                }
+
+                // Robust field lookup helper
+                const getField = (schema, ...aliases) => {
+                    const fallback = aliases[0];
+                    if (!schema) return { type: 1, name: fallback };
+                    for (const alias of aliases) {
+                        const info = schema[alias.trim()];
+                        if (info) return info;
+                    }
+                    return { type: 1, name: fallback };
+                };
+
+                const nameField = getField(fieldSchema, tableType === 'Supplier' ? "名称" : "姓名", "Name", "单位名称");
+                const phoneField = getField(fieldSchema, "电话", "手机", "Phone", "联系电话");
+                const balanceField = getField(fieldSchema, "余额", "账户余额", "Balance");
+                const catField = getField(fieldSchema, "类别", "分类", "Category", "类别标签");
+
+                const catType = catField.type;
+                let finalCategoryVal = categoryNames.length > 0 ? categoryNames.join(', ') : "";
+
+                if (catType === 4) {
+                    finalCategoryVal = categoryNames; // Array for Multi
+                } else if (catType === 3) {
+                    finalCategoryVal = categoryNames.length > 0 ? categoryNames[0] : "";
+                }
+
+                // Use the ACTUAL Feishu field names for keys
+                const payloadFields = {
+                    [nameField.name]: (c.name || "").trim(),
+                    [phoneField.name]: (c.phone || "").trim(),
+                    [balanceField.name]: Number(c.balance || 0),
+                    [catField.name]: finalCategoryVal
+                };
+
+                let targetRecordId = null;
+                const cleanName = (c.name || "").trim();
+                if (c.feishu_id && remoteItemsById.has(c.feishu_id)) {
+                    targetRecordId = c.feishu_id;
+                } else if (remoteItemsByName.has(cleanName)) {
+                    targetRecordId = remoteItemsByName.get(cleanName).record_id;
+                }
+
+                if (targetRecordId) {
+                    // Smart Update: Check change
+                    const remoteFields = remoteItemsById.get(targetRecordId)?.fields || {};
+
+                    const isFieldEqual = (val1, val2) => {
+                        const s1 = Array.isArray(val1) ? val1.map(x => String(x).trim()).sort().join(',') : String(val1 || '').trim();
+                        const s2 = Array.isArray(val2) ? val2.map(x => String(x).trim()).sort().join(',') : String(val2 || '').trim();
+
+                        // If one is array and other is string with same content, it might look equal string-wise,
+                        // but we MUST RETURN FALSE to trigger the change to proper Array format for Select fields.
+                        if (Array.isArray(val1) !== Array.isArray(val2)) return false;
+
+                        return s1 === s2;
+                    };
+
+                    const hasChanges = Object.keys(payloadFields).some(key => {
+                        return !isFieldEqual(payloadFields[key], remoteFields[key]);
+                    });
+
+                    if (hasChanges) {
+                        await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${tableId}/records/${targetRecordId}`, {
+                            method: 'PUT', headers, body: JSON.stringify({ fields: payloadFields })
+                        });
+                    }
+                    if (c.feishu_id !== targetRecordId) {
+                        await db.execute("UPDATE customers SET feishu_id = ? WHERE id = ?", [targetRecordId, c.id]);
+                    }
+                } else {
+                    recordsToCreate.push({ fields: payloadFields, localId: c.id });
+                }
+            }
+
+            // Batch Create
+            const BATCH_SIZE = 50;
+            for (let i = 0; i < recordsToCreate.length; i += BATCH_SIZE) {
+                const batch = recordsToCreate.slice(i, i + BATCH_SIZE);
+                const res = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${tableId}/records/batch_create`, {
+                    method: 'POST', headers, body: JSON.stringify({ records: batch.map(b => ({ fields: b.fields })) })
                 });
                 const data = await res.json();
-                if (data.code === 0 && data.data?.record?.record_id) {
-                    await db.execute("UPDATE customers SET feishu_id = ? WHERE id = ?", [data.data.record.record_id, c.id]);
+                if (data.code === 0 && data.data?.records) {
+                    for (let j = 0; j < data.data.records.length; j++) {
+                        const rec = data.data.records[j];
+                        const localItem = batch[j];
+                        await db.execute("UPDATE customers SET feishu_id = ? WHERE id = ?", [rec.record_id, localItem.localId]);
+                        count++;
+                    }
                 }
-                addedCount++;
             }
-        }
+            return count;
+        };
 
-        // 5. Get Existing Feishu Data (Transactions)
+        // 3. Sync Customers and Suppliers separately
+        const customersList = localCustomers.filter(c => c.role !== 'Supplier');
+        const suppliersList = localCustomers.filter(c => c.role === 'Supplier');
+
+        const addedCustomers = await syncList(customersList, customerTable.table_id, 'Customer', schemas.customerSchema);
+        const addedSuppliers = await syncList(suppliersList, supplierTable.table_id, 'Supplier', schemas.supplierSchema);
+
+        // 4. Sync Transactions (Common Table)
+        // ... (Existing transaction sync logic)
         const fTxRes = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${txTable.table_id}/records?page_size=500`, { headers });
         const fTxData = await fTxRes.json();
         const remoteTx = fTxData.data?.items || [];
         const remoteTxById = new Map(remoteTx.map(i => [i.record_id, i]));
         const remoteTxByCompositeKey = new Map(remoteTx.map(i => {
             const f = i.fields;
-            // Convert remote date back to YYYY-MM-DD for key matching
             const d = new Date(f["日期"]);
             const dStr = !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : "";
             return [`${dStr}_${f["单位名称"]}_${f["金额"]}_${f["类型"]}`, i];
         }));
 
-        // 6. Upload/Update Transactions
         let addedTxCount = 0;
+        const txToCreate = [];
+
         for (const t of localTx) {
             const customer = localCustomers.find(c => c.id === t.customerId);
             const cName = customer ? customer.name : "未知";
@@ -154,12 +304,37 @@ export const feishuService = {
             const typeStr = t.type === 'Income' ? '收入' : '支出';
             const compositeKey = `${dateStr}_${cName}_${t.amount}_${typeStr}`;
 
+            // Helper for Transaction Schema mapping
+            const getField = (schema, ...aliases) => {
+                const fallback = aliases[0];
+                if (!schema) return { type: 1, name: fallback };
+                for (const alias of aliases) {
+                    const info = schema[alias.trim()];
+                    if (info) return info;
+                }
+                return { type: 1, name: fallback };
+            };
+
+            const dateF = getField(schemas.transactionSchema, "日期", "Date", "时间");
+            const unitF = getField(schemas.transactionSchema, "单位名称", "客户名称", "Name", "姓名");
+            const amountF = getField(schemas.transactionSchema, "金额", "数值", "Amount");
+            const typeF = getField(schemas.transactionSchema, "类型", "Type", "收支类型");
+            const txCatF = getField(schemas.transactionSchema, "交易类别", "分类", "Category", "收支类别");
+            const descF = getField(schemas.transactionSchema, "备注", "Description", "说明");
+
+            const txCatType = txCatF.type;
+            let txCatVal = t.category || "";
+            if (txCatType === 4 && txCatVal) {
+                txCatVal = [txCatVal]; // Multi-Select expects array
+            }
+
             const fields = {
-                "日期": new Date(t.date).getTime(),
-                "单位名称": cName,
-                "金额": t.amount,
-                "类型": typeStr,
-                "备注": t.description || ""
+                [dateF.name]: new Date(t.date).getTime(),
+                [unitF.name]: cName,
+                [amountF.name]: t.amount,
+                [typeF.name]: typeStr,
+                [txCatF.name]: txCatVal,
+                [descF.name]: t.description || ""
             };
 
             let targetTxId = null;
@@ -170,29 +345,55 @@ export const feishuService = {
             }
 
             if (targetTxId) {
-                // UPDATE (PUT)
-                await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${txTable.table_id}/records/${targetTxId}`, {
-                    method: 'PUT', headers,
-                    body: JSON.stringify({ fields })
-                });
+                // Smart Update for Transactions using robust comparison
+                const remoteFields = remoteTxById.get(targetTxId)?.fields || {};
+
+                const isValEqual = (v1, v2) => {
+                    if (Array.isArray(v1) !== Array.isArray(v2)) return false;
+                    const s1 = Array.isArray(v1) ? v1.map(x => String(x).trim()).sort().join(',') : String(v1 || '').trim();
+                    const s2 = Array.isArray(v2) ? v2.map(x => String(x).trim()).sort().join(',') : String(v2 || '').trim();
+                    return s1 === s2;
+                };
+
+                const hasTxChanges =
+                    Math.abs(Number(fields[dateF.name]) - Number(remoteFields[dateF.name] || 0)) > 2000 || // 2s tolerance for floating point dates
+                    !isValEqual(fields[unitF.name], remoteFields[unitF.name]) ||
+                    Math.abs(Number(fields[amountF.name]) - Number(remoteFields[amountF.name] || 0)) > 0.01 ||
+                    !isValEqual(fields[typeF.name], remoteFields[typeF.name]) ||
+                    !isValEqual(fields[txCatF.name], remoteFields[txCatF.name]) ||
+                    !isValEqual(fields[descF.name], remoteFields[descF.name]);
+
+                if (hasTxChanges) {
+                    await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${txTable.table_id}/records/${targetTxId}`, {
+                        method: 'PUT', headers, body: JSON.stringify({ fields })
+                    });
+                }
                 if (t.feishu_id !== targetTxId) {
                     await db.execute("UPDATE transactions SET feishu_id = ? WHERE id = ?", [targetTxId, t.id]);
                 }
             } else {
-                // CREATE (POST)
-                const res = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${txTable.table_id}/records`, {
-                    method: 'POST', headers,
-                    body: JSON.stringify({ fields })
-                });
-                const data = await res.json();
-                if (data.code === 0 && data.data?.record?.record_id) {
-                    await db.execute("UPDATE transactions SET feishu_id = ? WHERE id = ?", [data.data.record.record_id, t.id]);
-                }
-                addedTxCount++;
+                txToCreate.push({ fields, localId: t.id });
             }
         }
 
-        return { addedContacts: addedCount, addedTx: addedTxCount };
+        // Batch Create Transactions
+        for (let i = 0; i < txToCreate.length; i += 50) {
+            const batch = txToCreate.slice(i, i + 50);
+            const res = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${txTable.table_id}/records/batch_create`, {
+                method: 'POST', headers, body: JSON.stringify({ records: batch.map(b => ({ fields: b.fields })) })
+            });
+            const data = await res.json();
+            if (data.code === 0 && data.data?.records) {
+                for (let j = 0; j < data.data.records.length; j++) {
+                    const rec = data.data.records[j];
+                    const localItem = batch[j];
+                    await db.execute("UPDATE transactions SET feishu_id = ? WHERE id = ?", [rec.record_id, localItem.localId]);
+                    addedTxCount++;
+                }
+            }
+        }
+
+        return { addedContacts: addedCustomers + addedSuppliers, addedTx: addedTxCount };
     },
 
     // Delete Record from Feishu
@@ -205,25 +406,25 @@ export const feishuService = {
         const accessToken = await feishuService.getTenantAccessToken(appId, appSecret);
         const headers = { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' };
 
-        const { contactTable, txTable } = await feishuService.findTableIds(appToken, accessToken);
-        const tableId = tableType === 'customer' ? contactTable?.table_id : txTable?.table_id;
+        const { customerTable, supplierTable, txTable } = await feishuService.findTableIds(appToken, accessToken);
+
+        let tableId = null;
+        if (tableType === 'customer') tableId = customerTable?.table_id;
+        else if (tableType === 'supplier') tableId = supplierTable?.table_id;
+        else if (tableType === 'transaction') tableId = txTable?.table_id;
 
         if (!tableId) return;
 
         try {
-            const res = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${tableId}/records/${feishuId}`, {
-                method: 'DELETE',
-                headers
+            await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${tableId}/records/${feishuId}`, {
+                method: 'DELETE', headers
             });
-            const data = await res.json();
-            if (data.code !== 0) {
-                console.warn(`Cloud Delete Failed for ${feishuId}:`, data.msg);
-            }
         } catch (e) {
             console.error('Delete API Error:', e);
         }
     },
 
+    // Sync: PULL Data from Feishu (And auto-save to DB)
     // Sync: PULL Data from Feishu (And auto-save to DB)
     pullData: async (config) => {
         const appId = config.appId?.trim();
@@ -235,53 +436,132 @@ export const feishuService = {
         const accessToken = await feishuService.getTenantAccessToken(appId, appSecret);
         const headers = { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' };
 
+        // 0. Ensure Schema & Get Dynamic Field Mapping
+        const schemas = await feishuService.createTables(config);
+
         // 1. Find Tables
-        const { contactTable, txTable } = await feishuService.findTableIds(appToken, accessToken);
-        if (!contactTable || !txTable) throw new Error(`请在飞书表格中创建名为“往来单位”和“收支记录”的两个数据表`);
+        const { customerTable, supplierTable, txTable } = await feishuService.findTableIds(appToken, accessToken);
+        if (!customerTable || !supplierTable || !txTable) throw new Error(`请先完成“一键初始化表格”`);
 
-        // 2. Fetch Contacts
-        const contactsRes = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${contactTable.table_id}/records?page_size=500`, { method: 'GET', headers });
-        const contactsData = await contactsRes.json();
+        // Helper: Fetch items with pagination
+        const fetchItems = async (tableId) => {
+            let items = [];
+            let pageToken = "";
+            let hasMore = true;
+            while (hasMore) {
+                const query = `page_size=500${pageToken ? `&page_token=${pageToken}` : ''}`;
+                const res = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${tableId}/records?${query}`, { headers });
+                const data = await res.json();
+                if (data.data?.items) items = items.concat(data.data.items);
+                hasMore = data.data?.has_more;
+                pageToken = data.data?.page_token;
+            }
+            return items;
+        };
 
-        const feishuContacts = (contactsData.data?.items || []).map(item => {
+        // Helper: Robust field extraction
+        const getVal = (fields, schema, ...aliases) => {
+            if (!schema) return null;
+            for (const alias of aliases) {
+                const info = schema[alias.trim()];
+                if (info && fields[info.name] !== undefined) return fields[info.name];
+            }
+            return null;
+        };
+
+        // 2. Fetch Customers
+        const rawCustomers = await fetchItems(customerTable.table_id);
+        const feishuCustomers = rawCustomers.map(item => {
             const f = item.fields;
+            const name = getVal(f, schemas.customerSchema, "姓名", "Name", "单位名称");
+            const phone = getVal(f, schemas.customerSchema, "电话", "手机", "Phone");
+            const balance = getVal(f, schemas.customerSchema, "余额", "Balance");
+            const cats = getVal(f, schemas.customerSchema, "类别", "分类", "Category") || [];
+
             return {
                 feishu_id: item.record_id,
-                name: f["姓名"] || f["Name"],
-                phone: f["电话"] || f["Phone"],
-                role: (f["类型"] === "供货商") ? "Supplier" : "Customer",
-                balance: parseFloat(f["余额"] || 0)
+                name: String(name || "").trim(),
+                phone: String(phone || "").trim(),
+                role: "Customer",
+                balance: parseFloat(balance || 0),
+                categoryNames: Array.isArray(cats) ? cats : (cats ? [cats] : [])
             };
         }).filter(c => c.name);
 
-        // 3. Fetch Transactions
-        const txRes = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${txTable.table_id}/records?page_size=500`, { method: 'GET', headers });
-        const txData = await txRes.json();
-        const feishuTransactions = (txData.data?.items || []).map(item => {
+        // 3. Fetch Suppliers
+        const rawSuppliers = await fetchItems(supplierTable.table_id);
+        const feishuSuppliers = rawSuppliers.map(item => {
             const f = item.fields;
-            // Handle internal dates vs display dates
+            const name = getVal(f, schemas.supplierSchema, "名称", "姓名", "Name");
+            const phone = getVal(f, schemas.supplierSchema, "电话", "手机", "Phone");
+            const balance = getVal(f, schemas.supplierSchema, "余额", "Balance");
+            const cats = getVal(f, schemas.supplierSchema, "类别", "分类", "Category") || [];
+
+            return {
+                feishu_id: item.record_id,
+                name: String(name || "").trim(),
+                phone: String(phone || "").trim(),
+                role: "Supplier",
+                balance: parseFloat(balance || 0),
+                categoryNames: Array.isArray(cats) ? cats : (cats ? [cats] : [])
+            };
+        }).filter(c => c.name);
+
+        // Merge Contacts
+        const allContacts = [...feishuCustomers, ...feishuSuppliers];
+
+        // 4. Fetch Transactions
+        const rawTx = await fetchItems(txTable.table_id);
+        const feishuTransactions = rawTx.map(item => {
+            const f = item.fields;
             let dateStr = new Date().toISOString().split('T')[0];
-            if (f["日期"]) {
-                const dateVal = f["日期"];
-                const dateObj = typeof dateVal === 'number' ? new Date(dateVal) : new Date(dateVal);
-                if (!isNaN(dateObj.getTime())) {
-                    dateStr = dateObj.toISOString().split('T')[0];
-                }
+            const dateVal = getVal(f, schemas.transactionSchema, "日期", "Date", "时间");
+            if (dateVal) {
+                const dateObj = new Date(typeof dateVal === 'number' ? dateVal : dateVal);
+                if (!isNaN(dateObj.getTime())) dateStr = dateObj.toISOString().split('T')[0];
             }
+
+            const cats = getVal(f, schemas.transactionSchema, "交易类别", "分类", "Category") || "默认";
+            const categoryName = Array.isArray(cats) ? cats.join(', ') : String(cats);
 
             return {
                 feishu_id: item.record_id,
                 date: dateStr,
-                amount: parseFloat(f["金额"] || 0),
-                type: (f["类型"] === "收入" || f["类型"] === "Income") ? "Income" : "Expense",
-                customerName: f["单位名称"] || f["客户名称"] || "Unknown"
+                amount: parseFloat(getVal(f, schemas.transactionSchema, "金额", "Amount") || 0),
+                type: String(getVal(f, schemas.transactionSchema, "类型", "Type") || "").includes("收入") ? "Income" : "Expense",
+                customerName: String(getVal(f, schemas.transactionSchema, "单位名称", "客户名称", "Name") || "Unknown"),
+                description: String(getVal(f, schemas.transactionSchema, "备注", "Description") || ""),
+                category: categoryName
             };
         });
 
-        return { contacts: feishuContacts, transactions: feishuTransactions };
+        // 5. Fetch Category Options (Dropdown choices)
+        const cloudCategories = new Set();
+        const fetchOptionsBySchema = (schema, ...aliases) => {
+            // Options are usually not in schema map but we can fetch them separately
+            // Actually, we already have schemas, but property info was lost in ensureTable fieldMap.
+            // Let's re-fetch field details to be safe.
+        };
+
+        const fetchFullOptions = async (tId, fName) => {
+            try {
+                const res = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${tId}/fields`, { headers });
+                const data = await res.json();
+                const field = (data.data?.items || []).find(f => f.field_name && f.field_name.trim() === fName.trim());
+                return field?.property?.options?.map(o => o.name) || [];
+            } catch (e) { return []; }
+        };
+
+        const c1 = await fetchFullOptions(customerTable.table_id, "类别");
+        const c2 = await fetchFullOptions(supplierTable.table_id, "类别");
+        const c3 = await fetchFullOptions(txTable.table_id, "交易类别");
+
+        [...c1, ...c2, ...c3].forEach(name => name && cloudCategories.add(name.trim()));
+
+        return { contacts: allContacts, transactions: feishuTransactions, categories: Array.from(cloudCategories) };
     },
 
-    // Auto-create Tables (Idempotent Fix)
+    // Auto-create Tables
     createTables: async (config) => {
         const appId = config.appId?.trim();
         const appSecret = config.appSecret?.trim();
@@ -298,6 +578,11 @@ export const feishuService = {
             const listRes = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables`, { method: 'GET', headers });
             const listData = await listRes.json();
 
+            // Check permissions eagerly
+            if (listData.code === 91403 || (listData.msg && listData.msg.includes('Forbidden'))) {
+                throw new Error(`权限不足 (代码: 91403)。\n请检查：\n1. 是否已将机器人添加到表格中？\n2. 是否授予了“管理者”权限？\n(请参考教程第四步)`);
+            }
+
             if (listData.code === 0) {
                 const found = (listData.data?.items || []).find(t => t.name.trim() === name.trim() || t.name.includes(name));
                 if (found) tableId = found.table_id;
@@ -309,55 +594,80 @@ export const feishuService = {
                     method: 'POST', headers, body: JSON.stringify({ table: { name } })
                 });
                 const data = await res.json();
+
+                if (data.code === 91403 || (data.msg && data.msg.includes('Forbidden'))) {
+                    throw new Error(`权限不足 (代码: 91403)。\n请检查：\n1. 是否已将机器人添加到表格中？\n2. 是否授予了“管理者”权限？\n(请参考教程第四步)`);
+                }
+
                 if (data.code === 0) {
                     tableId = data.data.table_id;
                 } else if (data.code === 1254001 || data.code === 1254013) {
+                    // Retry find if creation race condition or name conflict implies existence
                     const retryRes = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables`, { method: 'GET', headers });
                     const retryData = await retryRes.json();
                     const retryFound = (retryData.data?.items || []).find(it => it.name.includes(name));
                     if (retryFound) tableId = retryFound.table_id;
                 }
+
                 if (!tableId) throw new Error(`创建表 [${name}] 失败: ${data.msg} (代码:${data.code})`);
             }
 
-            // 3. Ensure Fields Exist (Strict Check)
-            // First, get existing fields to avoid unnecessary noise
+            // 3. Ensure Fields Exist
             const fieldsRes = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${tableId}/fields`, { headers });
             const fieldsData = await fieldsRes.json();
-            const existingFieldNames = new Set((fieldsData.data?.items || []).map(f => f.field_name));
+            const existingFields = fieldsData.data?.items || [];
+            const existingFieldNames = new Set(existingFields.map(f => f.field_name));
+
+            // Build Schema Map (Trimmed keys for robust lookup)
+            const fieldMap = {};
+            existingFields.forEach(f => {
+                if (f.field_name) {
+                    fieldMap[f.field_name.trim()] = { type: f.type, name: f.field_name };
+                }
+            });
 
             for (const field of fields) {
-                if (existingFieldNames.has(field.name)) continue;
+                const cleanRequiredName = field.name.trim();
+                // Check if field exists (trimmed comparison)
+                if (existingFields.some(ef => ef.field_name && ef.field_name.trim() === cleanRequiredName)) continue;
 
-                const fRes = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${tableId}/fields`, {
+                await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables/${tableId}/fields`, {
                     method: 'POST', headers,
                     body: JSON.stringify({ field_name: field.name, type: field.type, property: field.property })
                 });
-                const fData = await fRes.json();
-                // 1254002 = Already exists, ignore. Others should be logged.
-                if (fData.code !== 0 && fData.code !== 1254002) {
-                    console.error(`Field ${field.name} creation failed:`, fData);
-                    // We don't throw here to allow partial success, but maybe we should?
-                }
+                // Assume default type if we created it
+                fieldMap[cleanRequiredName] = { type: field.type, name: field.name };
             }
+            return fieldMap;
         };
 
-        // Execution
-        await ensureTable("往来单位", [
+        // Execution - Create Split Tables
+        // Customer Table
+        const customerSchema = await ensureTable("客户列表", [
             { name: "姓名", type: 1 },
             { name: "电话", type: 1 },
-            { name: "类型", type: 3, property: { options: [{ name: "客户" }, { name: "供货商" }] } },
             { name: "余额", type: 2 },
+            { name: "类别", type: 1 },
         ]);
 
-        await ensureTable("收支记录", [
+        // Supplier Table
+        const supplierSchema = await ensureTable("供货商列表", [
+            { name: "名称", type: 1 },
+            { name: "电话", type: 1 },
+            { name: "余额", type: 2 },
+            { name: "类别", type: 1 },
+        ]);
+
+        // Transaction Table
+        const transactionSchema = await ensureTable("收支记录", [
             { name: "日期", type: 5 },
             { name: "单位名称", type: 1 },
             { name: "金额", type: 2 },
             { name: "类型", type: 3, property: { options: [{ name: "收入" }, { name: "支出" }] } },
+            { name: "交易类别", type: 1 },
             { name: "备注", type: 1 }
         ]);
 
-        return true;
+        return { customerSchema, supplierSchema, transactionSchema };
     }
 };

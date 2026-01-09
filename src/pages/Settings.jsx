@@ -255,23 +255,23 @@ const Settings = () => {
                 <div className="mt-6 flex gap-3">
                     <button
                         onClick={handleFeishuSave}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-bold shadow-sm border border-blue-600 active:scale-95"
                     >
                         <Save className="w-4 h-4" />
                         保存配置
                     </button>
                     <button
                         onClick={handleTestConnection}
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 transition"
+                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition font-bold shadow-sm active:scale-95"
                     >
-                        <RefreshCw className="w-4 h-4" />
+                        <RefreshCw className="w-4 h-4 text-primary" />
                         测试连接
                     </button>
 
                     <button
                         onClick={handleInitializeTables}
                         disabled={isInitializing}
-                        className="flex items-center gap-2 px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition"
+                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition font-bold shadow-sm active:scale-95"
                     >
                         <RefreshCw className={cn("w-4 h-4", isInitializing && "animate-spin")} />
                         {isInitializing ? '创建中...' : '一键初始化表格'}
@@ -280,7 +280,7 @@ const Settings = () => {
                     <button
                         onClick={handlePushData}
                         disabled={isInitializing}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition"
+                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition font-bold shadow-sm active:scale-95"
                     >
                         <Upload className={cn("w-4 h-4", isInitializing && "animate-spin")} />
                         上传本地数据

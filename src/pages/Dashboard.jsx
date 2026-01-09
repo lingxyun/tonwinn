@@ -242,23 +242,23 @@ const Dashboard = () => {
                                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">营收</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <div className="w-2.5 h-2.5 rounded-full bg-slate-200" />
+                                    <div className="w-2.5 h-2.5 rounded-full bg-[#64748b]" />
                                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">支出</span>
                                 </div>
                             </div>
                         </div>
                         <div className="h-[320px] w-full mt-auto">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                                     <CartesianGrid strokeDasharray="8 8" vertical={false} stroke="#E2E8F0" strokeOpacity={0.3} />
                                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 13, fontWeight: 600 }} dy={10} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 13, fontWeight: 600 }} width={45} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 13, fontWeight: 600 }} width={60} />
                                     <Tooltip
                                         cursor={{ fill: 'rgba(59, 130, 246, 0.05)' }}
                                         contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(10px)', borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}
                                     />
-                                    <Bar dataKey="revenue" name="营收" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={20} />
-                                    <Bar dataKey="expense" name="支出" fill="#e2e8f0" radius={[6, 6, 0, 0]} barSize={20} />
+                                    <Bar dataKey="revenue" name="营收" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={45} />
+                                    <Bar dataKey="expense" name="支出" fill="#64748b" radius={[4, 4, 0, 0]} barSize={45} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>

@@ -76,6 +76,19 @@ export const DataProvider = ({ children }) => {
         fetchData(isTauri ? 3 : 0);
     }, []);
 
+    // --- EMERGENCY RECOVERY ---
+    if (isTauri) {
+        const recoverCategories = async () => {
+            try {
+                // If categories exist as 'Both' (due to sync), change them to 'Income' so they are visible
+                await db.execute("UPDATE categories SET type = 'Income' WHERE type = 'Both'");
+                const catData = await db.select('SELECT * FROM categories ORDER BY created_at DESC');
+                setCategories(catData);
+            } catch (e) { console.error('Recovery failed:', e); }
+        };
+        recoverCategories();
+    }
+
     // Periodic Pull
     useEffect(() => {
         if (!feishuConfig?.appId || !isTauri) return;
@@ -89,8 +102,10 @@ export const DataProvider = ({ children }) => {
         isSyncing.current = true;
         try {
             console.log('Auto Pulling from Feishu...');
-            const { contacts, transactions } = await feishuService.pullData(config);
-            if (contacts.length > 0) await savePulledData(contacts, transactions);
+            const result = await feishuService.pullData(config);
+            if (result && (result.contacts?.length > 0 || result.transactions?.length > 0 || result.categories?.length > 0)) {
+                await savePulledData(result.contacts, result.transactions, result.categories);
+            }
         } catch (e) {
             console.warn('Auto Pull Failed (Silent):', e);
         } finally {
@@ -99,16 +114,43 @@ export const DataProvider = ({ children }) => {
     };
 
     // Helper: Save Pulled Data (Merge logic)
-    const savePulledData = async (fContacts, fTransactions) => {
+    const savePulledData = async (fContacts = [], fTransactions = [], fCategories = []) => {
         let hasChanges = false;
 
-        // Fetch latest state to avoid staleness
-        const [latestCust, latestTx] = await Promise.all([
-            db.select('SELECT * FROM customers'),
-            db.select('SELECT * FROM transactions')
+        // 1. Merge Categories FIRST so they are available for record resolution
+        const [initialCats] = await Promise.all([
+            db.select('SELECT * FROM categories')
         ]);
 
-        // 1. Merge Customers
+        const currentCats = new Map(initialCats.map(c => [c.name.trim().toLowerCase(), c]));
+        const entityNames = new Set(latestCust.map(c => c.name.trim().toLowerCase()));
+
+        let catsAdded = false;
+        for (const cloudCatName of fCategories) {
+            const name = (cloudCatName || "").trim();
+            if (!name) continue;
+
+            const lowerName = name.toLowerCase();
+            // SKIP categories that are actually customer/supplier names (pollution protection)
+            if (entityNames.has(lowerName)) continue;
+
+            if (!currentCats.has(lowerName)) {
+                // Default new cloud categories to 'Income' (safer visibility)
+                await db.execute('INSERT INTO categories (name, type) VALUES (?, ?)', [name, 'Income']);
+                catsAdded = true;
+                hasChanges = true;
+                console.log(`Pulled new category from cloud: ${name}`);
+            }
+        }
+
+        // Fetch latest state to avoid staleness
+        const [latestCust, latestTx, latestCats] = await Promise.all([
+            db.select('SELECT * FROM customers'),
+            db.select('SELECT * FROM transactions'),
+            catsAdded ? db.select('SELECT * FROM categories') : Promise.resolve(initialCats)
+        ]);
+
+        // 2. Merge Customers
         const currentById = new Map(latestCust.filter(c => c.feishu_id).map(c => [c.feishu_id, c]));
         const currentByName = new Map(latestCust.map(c => [c.name, c]));
 
@@ -120,18 +162,28 @@ export const DataProvider = ({ children }) => {
                 existing = currentByName.get(fc.name);
             }
 
+            // Resolve Category Names to IDs accurately
+            const resolveCatIds = (names) => {
+                if (!names || !Array.isArray(names)) return '[]';
+                const ids = names.map(n => latestCats.find(c => c.name.trim() === n.trim())?.id).filter(Boolean);
+                return JSON.stringify(ids);
+            };
+
+            const targetCatIds = resolveCatIds(fc.categoryNames);
+
             if (existing) {
                 // Update existing record if any field changed
                 const needsUpdate =
                     existing.name !== fc.name ||
                     existing.phone !== (fc.phone || '') ||
                     existing.role !== fc.role ||
-                    existing.feishu_id !== fc.feishu_id;
+                    existing.feishu_id !== fc.feishu_id ||
+                    existing.categoryIds !== targetCatIds;
 
                 if (needsUpdate) {
                     await db.execute(
-                        'UPDATE customers SET name = ?, phone = ?, role = ?, feishu_id = ? WHERE id = ?',
-                        [fc.name, fc.phone || '', fc.role, fc.feishu_id, existing.id]
+                        'UPDATE customers SET name = ?, phone = ?, role = ?, feishu_id = ?, categoryIds = ? WHERE id = ?',
+                        [fc.name, fc.phone || '', fc.role, fc.feishu_id, targetCatIds, existing.id]
                     );
                     hasChanges = true;
                     console.log(`Updated customer from cloud: ${fc.name}`);
@@ -139,15 +191,15 @@ export const DataProvider = ({ children }) => {
             } else {
                 // INSERT new record
                 await db.execute(
-                    'INSERT INTO customers (name, phone, role, balance, status, feishu_id) VALUES (?, ?, ?, ?, ?, ?)',
-                    [fc.name, fc.phone || '', fc.role, fc.balance, 'Active', fc.feishu_id]
+                    'INSERT INTO customers (name, phone, role, balance, status, feishu_id, categoryIds) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    [fc.name, fc.phone || '', fc.role, fc.balance, 'Active', fc.feishu_id, targetCatIds]
                 );
                 hasChanges = true;
                 console.log(`Pulled new customer: ${fc.name}`);
             }
         }
 
-        // 2. Merge Transactions
+        // 3. Merge Transactions
         const currentTxById = new Map(latestTx.filter(t => t.feishu_id).map(t => [t.feishu_id, t]));
         const currentTxByCompositeKey = new Map(latestTx.map(t => {
             const customer = latestCust.find(c => c.id === t.customerId);
@@ -184,7 +236,7 @@ export const DataProvider = ({ children }) => {
                 const txId = `ORD-${Math.floor(Math.random() * 100000).toString().padStart(6, '0')}`;
                 await db.execute(
                     'INSERT INTO transactions (id, customerId, amount, type, category, date, description, status, feishu_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                    [txId, customerId, ft.amount, ft.type, 'Cloud Sync', ft.date, '来自飞书同步', 'Completed', ft.feishu_id]
+                    [txId, customerId, ft.amount, ft.type, ft.category, ft.date, ft.description || '来自飞书同步', 'Completed', ft.feishu_id]
                 );
                 hasChanges = true;
                 console.log(`Pulled new transaction: ${ft.date} ${ft.customerName}`);
@@ -195,19 +247,28 @@ export const DataProvider = ({ children }) => {
     };
 
     // Helper: Auto Push
+    // Helper: Auto Push with Debounce & Lock
+    const syncTimeoutRef = useRef(null);
+
     const triggerAutoPush = async () => {
-        if (!feishuConfig?.appId || isSyncing.current) return;
-        // Small delay to let DB write finish
-        setTimeout(async () => {
+        if (!feishuConfig?.appId) return;
+
+        // Clear previous pending sync
+        if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+
+        syncTimeoutRef.current = setTimeout(async () => {
+            if (isSyncing.current) return; // Still syncing, skip this turn (or could queue better, but skip is safer for dupes)
+
+            isSyncing.current = true;
+            console.log('Auto Pushing (Debounced)...');
             try {
-                // await feishuService.pushData(feishuConfig); // Too heavy for every keystroke?
-                // Ideally we push one record. For MVP, we push all (idempotent check handles dupes).
-                // Let's rely on "Upload Local Data" manually for bulk, or push asynchronously.
-                // User asked for "Realtime". Let's try.
-                console.log('Auto Pushing...');
                 await feishuService.pushData(feishuConfig);
-            } catch (e) { console.warn('Auto Push Failed:', e); }
-        }, 2000);
+            } catch (e) {
+                console.warn('Auto Push Failed:', e);
+            } finally {
+                isSyncing.current = false;
+            }
+        }, 3000); // Increased to 3s to allow more batching
     };
 
     const refreshData = async () => {
@@ -282,8 +343,18 @@ export const DataProvider = ({ children }) => {
             const entity = customers.find(c => c.id === id);
             if (entity?.feishu_id) {
                 console.log(`Syncing deletion to cloud: ${entity.name}`);
-                await feishuService.deleteRecord(feishuConfig, 'customer', entity.feishu_id);
+                const type = entity.role === 'Supplier' ? 'supplier' : 'customer';
+                await feishuService.deleteRecord(feishuConfig, type, entity.feishu_id);
             }
+
+            // Sync deletion of associated transactions
+            const customerTx = transactions.filter(t => t.customerId === id);
+            for (const tx of customerTx) {
+                if (tx.feishu_id) {
+                    await feishuService.deleteRecord(feishuConfig, 'transaction', tx.feishu_id);
+                }
+            }
+
             await db.execute('DELETE FROM transactions WHERE customerId = ?', [id]);
             await db.execute('DELETE FROM customers WHERE id = ?', [id]);
             setCustomers((prev) => prev.filter((c) => c.id !== id));
@@ -299,6 +370,7 @@ export const DataProvider = ({ children }) => {
             const newCat = (await db.select('SELECT * FROM categories ORDER BY id DESC LIMIT 1'))[0];
             setCategories((prev) => [newCat, ...prev]);
             toast.success('类别添加成功');
+            triggerAutoPush();
         } catch {
             toast.error('添加失败');
         }
@@ -311,6 +383,7 @@ export const DataProvider = ({ children }) => {
                 prev.map((c) => (c.id === cat.id ? cat : c))
             );
             toast.success('类别已更新');
+            triggerAutoPush();
         } catch {
             toast.error('更新失败');
         }
@@ -321,6 +394,7 @@ export const DataProvider = ({ children }) => {
             await db.execute('DELETE FROM categories WHERE id = ?', [id]);
             setCategories((prev) => prev.filter((c) => c.id !== id));
             toast.success('类别已删除');
+            triggerAutoPush();
         } catch {
             toast.error('删除失败');
         }
@@ -448,9 +522,14 @@ export const DataProvider = ({ children }) => {
         }
     };
 
-    const exportCustomersToCSV = () => {
+    const exportCustomersToCSV = (roleFilter = null) => {
+        let exportData = customers;
+        if (roleFilter) {
+            exportData = customers.filter(c => c.role === roleFilter);
+        }
+
         const headers = ['ID', '姓名', '电话', '地址', '账户余额', '状态', '类型', '分类'];
-        const rows = customers.map(c => {
+        const rows = exportData.map(c => {
             let catNames = '';
             // Handle both old singular categoryId and new array categoryIds
             if (c.categoryIds) {
@@ -479,14 +558,20 @@ export const DataProvider = ({ children }) => {
         });
 
         const csvContent = Papa.unparse({ headers, data: rows });
-        downloadCSV(csvContent, `往来单位名录_${new Date().toLocaleDateString()}.csv`);
+        const typeName = roleFilter === 'Supplier' ? '供货商' : (roleFilter === 'Customer' ? '客户' : '往来单位');
+        downloadCSV(csvContent, `${typeName}名录_${new Date().toLocaleDateString()}.csv`);
     };
 
-    const exportTransactionDetailsToCSV = () => {
+    const exportTransactionDetailsToCSV = (targetCustomerId = null) => {
+        let exportData = transactions;
+        if (targetCustomerId) {
+            exportData = transactions.filter(t => t.customerId === targetCustomerId);
+        }
+
         const headers = ['日期', '客户名称', '金额', '类型', '分类', '备注', '交易ID'];
         const formatRow = (row) => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(",");
 
-        const rows = transactions.map(t => {
+        const rows = exportData.map(t => {
             const customer = customers.find(c => c.id === t.customerId);
             return [
                 t.date,
@@ -500,7 +585,15 @@ export const DataProvider = ({ children }) => {
         });
 
         const csvContent = [headers, ...rows].map(formatRow).join("\n");
-        downloadCSV(csvContent, `交易全量明细_${new Date().toLocaleDateString()}.csv`);
+
+        let fileName = `交易全量明细_${new Date().toLocaleDateString()}.csv`;
+        if (targetCustomerId) {
+            const customer = customers.find(c => c.id === targetCustomerId);
+            const customerName = customer ? customer.name : '未知';
+            fileName = `${customerName}_交易明细_${new Date().toLocaleDateString()}.csv`;
+        }
+
+        downloadCSV(csvContent, fileName);
     };
 
     const downloadCustomerTemplate = () => {

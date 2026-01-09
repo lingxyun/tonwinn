@@ -35,7 +35,9 @@ const CustomerForm = ({ onSubmit, onCancel, initialData = null, isSupplier = fal
     }, []);
 
     const filteredCategories = categories.filter(cat =>
-        isSupplier ? cat.type === 'Expense' : cat.type === 'Income'
+        isSupplier 
+            ? (cat.type === 'Expense' || cat.type === 'Both') 
+            : (cat.type === 'Income' || cat.type === 'Both')
     );
 
     const handleSubmit = (e) => {

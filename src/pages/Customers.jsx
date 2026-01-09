@@ -32,10 +32,16 @@ const Customers = () => {
     const [editingCustomer, setEditingCustomer] = useState(null);
     const [activeMenuId, setActiveMenuId] = useState(null);
     const [selectedCustomer, setSelectedCustomer] = useState(null);
+    const [detailPage, setDetailPage] = useState(1);
     const [isDataMenuOpen, setIsDataMenuOpen] = useState(false);
     const menuRef = useRef(null);
     const dataMenuRef = useRef(null);
     const fileInputRef = useRef(null);
+
+    // Reset detail pagination when customer changes
+    useEffect(() => {
+        setDetailPage(1);
+    }, [selectedCustomer]);
 
     // Close menu when clicking outside
     useEffect(() => {
@@ -80,6 +86,22 @@ const Customers = () => {
         return matchesSearch && matchesCategory;
     });
 
+    // Pagination Logic
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
+    // Reset pagination when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, selectedCategory]);
+
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = filteredCustomers.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
+
+    const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
     const handleAddOrUpdateCustomer = (data) => {
         if (editingCustomer) {
             updateCustomer({ ...data, id: editingCustomer.id });
@@ -118,6 +140,15 @@ const Customers = () => {
         // Stats logic
         const customerTx = transactions.filter(t => t.customerId === selectedCustomer.id)
             .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        // Pagination for Detail View
+        const detailItemsPerPage = 10;
+        const indexOfLastDetail = detailPage * detailItemsPerPage;
+        const indexOfFirstDetail = indexOfLastDetail - detailItemsPerPage;
+        const currentDetailTx = customerTx.slice(indexOfFirstDetail, indexOfLastDetail);
+        const totalDetailPages = Math.ceil(customerTx.length / detailItemsPerPage);
+
+        const paginateDetail = (pageNumber) => setDetailPage(pageNumber);
 
         return (
             <div className="space-y-6">
@@ -249,6 +280,13 @@ const Customers = () => {
                             <FileSpreadsheet className="w-4 h-4 text-slate-400" />
                             交易记录
                         </h3>
+                        <button
+                            onClick={() => exportTransactionDetailsToCSV(selectedCustomer.id)}
+                            className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                            title="导出此客户交易记录"
+                        >
+                            <Download className="w-4 h-4" />
+                        </button>
                     </div>
 
                     {customerTx.length > 0 ? (
@@ -266,7 +304,7 @@ const Customers = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                    {customerTx.map(tx => (
+                                    {currentDetailTx.map(tx => (
                                         <tr key={tx.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
                                             <td className="px-6 py-3 font-medium text-slate-900 dark:text-slate-100">#{tx.id}</td>
                                             <td className="px-6 py-3 text-slate-500">{tx.date}</td>
@@ -301,13 +339,42 @@ const Customers = () => {
                                 </tbody>
                             </table>
                         </div>
+
                     ) : (
                         <div className="p-8 text-center text-slate-400 text-sm">
                             该客户暂无交易记录
                         </div>
                     )}
+
+                    {/* Detail Pagination Controls */}
+                    {customerTx.length > 0 && (
+                        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
+                            <div className="text-xs text-slate-500 dark:text-slate-400">
+                                显示 {indexOfFirstDetail + 1} - {Math.min(indexOfLastDetail, customerTx.length)} / 共 {customerTx.length}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => paginateDetail(detailPage - 1)}
+                                    disabled={detailPage === 1}
+                                    className="px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-xs hover:bg-white dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                                >
+                                    上一页
+                                </button>
+                                <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                                    {detailPage} / {totalDetailPages}
+                                </span>
+                                <button
+                                    onClick={() => paginateDetail(detailPage + 1)}
+                                    disabled={detailPage === totalDetailPages}
+                                    className="px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-xs hover:bg-white dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                                >
+                                    下一页
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
-            </div>
+            </div >
         );
     }
     return (
@@ -331,7 +398,7 @@ const Customers = () => {
                         {isDataMenuOpen && (
                             <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 z-50 py-1 overflow-hidden animate-in fade-in zoom-in duration-200">
                                 <button
-                                    onClick={() => { exportCustomersToCSV(); setIsDataMenuOpen(false); }}
+                                    onClick={() => { exportCustomersToCSV('Customer'); setIsDataMenuOpen(false); }}
                                     className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2"
                                 >
                                     <Download className="w-4 h-4 text-blue-500" /> 导出客户名录
@@ -404,7 +471,7 @@ const Customers = () => {
                         <FileSpreadsheet className="w-5 h-5" />
                     </button>
                 </div>
-            </div>
+            </div >
 
             <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden min-h-[400px]">
                 {/* Toolbar */}
@@ -448,7 +515,7 @@ const Customers = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                            {filteredCustomers.map((customer) => (
+                            {currentItems.map((customer) => (
                                 <tr
                                     key={customer.id}
                                     className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group relative"
@@ -550,7 +617,7 @@ const Customers = () => {
 
                 {/* Mobile Card Layout */}
                 <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
-                    {filteredCustomers.map((customer) => (
+                    {currentItems.map((customer) => (
                         <div
                             key={customer.id}
                             className="p-4 space-y-4 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors"
@@ -621,6 +688,39 @@ const Customers = () => {
                     ))}
                 </div>
             </div>
+
+
+            {/* Pagination Controls */}
+            {
+                filteredCustomers.length > 0 && (
+                    <div className="flex justify-between items-center bg-white dark:bg-slate-900 px-4 py-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
+                        <div className="text-sm text-slate-500 dark:text-slate-400">
+                            显示第 <span className="font-bold text-slate-900 dark:text-white">{indexOfFirstItem + 1}</span> 到 <span className="font-bold text-slate-900 dark:text-white">{Math.min(indexOfLastItem, filteredCustomers.length)}</span> 条，共 <span className="font-bold text-slate-900 dark:text-white">{filteredCustomers.length}</span> 条
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => paginate(currentPage - 1)}
+                                disabled={currentPage === 1}
+                                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                上一页
+                            </button>
+                            <div className="flex items-center gap-1">
+                                <span className="text-sm font-bold text-primary px-2">
+                                    第 {currentPage} 页 / 共 {totalPages} 页
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => paginate(currentPage + 1)}
+                                disabled={currentPage === totalPages}
+                                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                下一页
+                            </button>
+                        </div>
+                    </div>
+                )
+            }
 
             <Modal
                 isOpen={isModalOpen}
