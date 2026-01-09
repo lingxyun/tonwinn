@@ -243,6 +243,32 @@ export const DataProvider = ({ children }) => {
             }
         }
 
+        // 4. Delete Sync: Remove local records that were deleted in Feishu
+        // Only delete records that have a feishu_id (cloud-synced) but are no longer in cloud data
+        const cloudTxIds = new Set(fTransactions.map(ft => ft.feishu_id).filter(Boolean));
+        const cloudCustomerIds = new Set(fContacts.map(fc => fc.feishu_id).filter(Boolean));
+
+        // Delete transactions that were removed from Feishu
+        const txToDelete = latestTx.filter(t => t.feishu_id && !cloudTxIds.has(t.feishu_id));
+        for (const tx of txToDelete) {
+            await db.execute('DELETE FROM transactions WHERE id = ?', [tx.id]);
+            hasChanges = true;
+            console.log(`🗑️ Deleted transaction (removed from Feishu): ${tx.id}`);
+        }
+
+        // Delete customers that were removed from Feishu (only if they have no local transactions)
+        const custToDelete = latestCust.filter(c => c.feishu_id && !cloudCustomerIds.has(c.feishu_id));
+        for (const cust of custToDelete) {
+            const [txCount] = await db.select('SELECT COUNT(*) as count FROM transactions WHERE customerId = ?', [cust.id]);
+            if (txCount.count === 0) {
+                await db.execute('DELETE FROM customers WHERE id = ?', [cust.id]);
+                hasChanges = true;
+                console.log(`🗑️ Deleted customer (removed from Feishu): ${cust.name}`);
+            } else {
+                console.log(`⚠️ Skipped deleting customer ${cust.name} (has ${txCount.count} local transactions)`);
+            }
+        }
+
         if (hasChanges) refreshData();
     };
 
