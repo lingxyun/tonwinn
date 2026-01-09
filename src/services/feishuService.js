@@ -53,10 +53,16 @@ export const feishuService = {
     // Helper: Find tables by name
     findTableIds: async (appToken, accessToken) => {
         const headers = { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' };
-        const tablesRes = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables`, { method: 'GET', headers });
+        const tablesRes = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables?page_size=100`, { method: 'GET', headers });
         if (!tablesRes.ok) throw new Error(`Fetch Tables Failed: ${tablesRes.status}`);
-        const tablesData = await tablesRes.json();
-        const items = tablesData.data?.items || [];
+        let tablesData = await tablesRes.json();
+        let items = tablesData.data?.items || [];
+
+        while (tablesData.data?.has_more) {
+            const nextRes = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables?page_size=100&page_token=${tablesData.data.page_token}`, { method: 'GET', headers });
+            tablesData = await nextRes.json();
+            if (tablesData.data?.items) items = items.concat(tablesData.data.items);
+        }
 
         return {
             customerTable: items.find(t => t.name.includes("客户列表") || t.name.includes("Customer")),
@@ -574,17 +580,25 @@ export const feishuService = {
         const ensureTable = async (name, fields) => {
             let tableId = null;
 
-            // 1. Fetch ALL existing tables
-            const listRes = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables`, { method: 'GET', headers });
-            const listData = await listRes.json();
+            // 1. Fetch ALL existing tables with pagination
+            let listRes = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables?page_size=100`, { method: 'GET', headers });
+            let listData = await listRes.json();
+            let allItems = listData.data?.items || [];
 
             // Check permissions eagerly
             if (listData.code === 91403 || (listData.msg && listData.msg.includes('Forbidden'))) {
                 throw new Error(`权限不足 (代码: 91403)。\n请检查：\n1. 是否已将机器人添加到表格中？\n2. 是否授予了“管理者”权限？\n(请参考教程第四步)`);
             }
 
-            if (listData.code === 0) {
-                const found = (listData.data?.items || []).find(t => t.name.trim() === name.trim() || t.name.includes(name));
+            // Loop pages
+            while (listData.data?.has_more) {
+                listRes = await fetch(`${FEISHU_OPEN_API}/open-apis/bitable/v1/apps/${appToken}/tables?page_size=100&page_token=${listData.data.page_token}`, { method: 'GET', headers });
+                listData = await listRes.json();
+                if (listData.data?.items) allItems = allItems.concat(listData.data.items);
+            }
+
+            if (listData.code === 0 || allItems.length > 0) {
+                const found = allItems.find(t => t.name.trim() === name.trim() || t.name.includes(name));
                 if (found) tableId = found.table_id;
             }
 
