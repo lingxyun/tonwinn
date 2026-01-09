@@ -97,6 +97,161 @@ export const DataProvider = ({ children }) => {
     }, [feishuConfig]);
 
     // Helper: Auto Pull
+    // Helper: Save Pulled Data (Merge logic) - MOVED UP to fix initialization error
+    const savePulledData = async (fContacts = [], fTransactions = [], fCategories = []) => {
+        let hasChanges = false;
+
+        // 1. Merge Categories
+        const [initialCats] = await Promise.all([
+            db.select('SELECT * FROM categories')
+        ]);
+
+        const currentCats = new Map(initialCats.map(c => [c.name.trim().toLowerCase(), c]));
+        const entityNames = new Set(latestCust.map(c => c.name.trim().toLowerCase()));
+
+        let catsAdded = false;
+        for (const cloudCatName of fCategories) {
+            const name = (cloudCatName || "").trim();
+            if (!name) continue;
+
+            const lowerName = name.toLowerCase();
+            if (entityNames.has(lowerName)) continue;
+
+            if (!currentCats.has(lowerName)) {
+                await db.execute('INSERT INTO categories (name, type) VALUES (?, ?)', [name, 'Income']);
+                catsAdded = true;
+                hasChanges = true;
+                console.log(`Pulled new category from cloud: ${name}`);
+            }
+        }
+
+        // Fetch latest state
+        const [latestCust, latestTx, latestCats] = await Promise.all([
+            db.select('SELECT * FROM customers'),
+            db.select('SELECT * FROM transactions'),
+            catsAdded ? db.select('SELECT * FROM categories') : Promise.resolve(initialCats)
+        ]);
+
+        // 2. Merge Customers
+        const currentById = new Map(latestCust.filter(c => c.feishu_id).map(c => [c.feishu_id, c]));
+        const currentByName = new Map(latestCust.map(c => [c.name, c]));
+
+        for (const fc of fContacts) {
+            let existing = currentById.get(fc.feishu_id);
+
+            if (!existing) {
+                existing = currentByName.get(fc.name);
+            }
+
+            const resolveCatIds = (names) => {
+                if (!names || !Array.isArray(names)) return '[]';
+                const ids = names.map(n => latestCats.find(c => c.name.trim() === n.trim())?.id).filter(Boolean);
+                return JSON.stringify(ids);
+            };
+
+            const targetCatIds = resolveCatIds(fc.categoryNames);
+
+            if (existing) {
+                const needsUpdate =
+                    existing.name !== fc.name ||
+                    existing.phone !== (fc.phone || '') ||
+                    existing.role !== fc.role ||
+                    existing.feishu_id !== fc.feishu_id ||
+                    existing.categoryIds !== targetCatIds;
+
+                if (needsUpdate) {
+                    await db.execute(
+                        'UPDATE customers SET name = ?, phone = ?, role = ?, feishu_id = ?, categoryIds = ? WHERE id = ?',
+                        [fc.name, fc.phone || '', fc.role, fc.feishu_id, targetCatIds, existing.id]
+                    );
+                    hasChanges = true;
+                    console.log(`Updated customer from cloud: ${fc.name}`);
+                }
+            } else {
+                await db.execute(
+                    'INSERT INTO customers (name, phone, role, balance, status, feishu_id, categoryIds) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    [fc.name, fc.phone || '', fc.role, fc.balance, 'Active', fc.feishu_id, targetCatIds]
+                );
+                hasChanges = true;
+                console.log(`Pulled new customer: ${fc.name}`);
+            }
+        }
+
+        // 3. Merge Transactions
+        const currentTxById = new Map(latestTx.filter(t => t.feishu_id).map(t => [t.feishu_id, t]));
+        const currentTxByCompositeKey = new Map(latestTx.map(t => {
+            const customer = latestCust.find(c => c.id === t.customerId);
+            const cName = customer ? customer.name : "未知";
+            return [`${t.date}_${cName}_${t.amount}_${t.type === 'Income' ? '收入' : '支出'}`, t];
+        }));
+
+        for (const ft of fTransactions) {
+            const ftTypeStr = ft.type === 'Income' ? '收入' : '支出';
+            const compositeKey = `${ft.date}_${ft.customerName}_${ft.amount}_${ftTypeStr}`;
+
+            let existingTx = currentTxById.get(ft.feishu_id);
+            if (!existingTx) {
+                existingTx = currentTxByCompositeKey.get(compositeKey);
+            }
+
+            if (existingTx) {
+                if (!existingTx.feishu_id || existingTx.feishu_id !== ft.feishu_id) {
+                    await db.execute('UPDATE transactions SET feishu_id = ? WHERE id = ?', [ft.feishu_id, existingTx.id]);
+                }
+            } else {
+                let customer = latestCust.find(c => c.name === ft.customerName);
+                let customerId = customer ? customer.id : null;
+
+                if (!customerId && ft.customerName !== "Unknown") {
+                    await db.execute('INSERT INTO customers (name, status, role) VALUES (?, ?, ?)', [ft.customerName, 'Active', 'Customer']);
+                    const [newC] = await db.select('SELECT id FROM customers WHERE name = ?', [ft.customerName]);
+                    customerId = newC.id;
+                    hasChanges = true;
+                }
+
+                const txId = `ORD-${Math.floor(Math.random() * 100000).toString().padStart(6, '0')}`;
+                await db.execute(
+                    'INSERT INTO transactions (id, customerId, amount, type, category, date, description, status, feishu_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [txId, customerId, ft.amount, ft.type, ft.category, ft.date, ft.description || '来自飞书同步', 'Completed', ft.feishu_id]
+                );
+                hasChanges = true;
+                console.log(`Pulled new transaction: ${ft.date} ${ft.customerName}`);
+            }
+        }
+
+        // 4. Delete Sync
+        const cloudTxIds = new Set(fTransactions.map(ft => ft.feishu_id).filter(Boolean));
+        const cloudCustomerIds = new Set(fContacts.map(fc => fc.feishu_id).filter(Boolean));
+
+        const txToDelete = latestTx.filter(t => t.feishu_id && !cloudTxIds.has(t.feishu_id));
+        console.log(`🗑️ Deletion Check: Cloud has ${cloudTxIds.size} synced Tx. Local has ${latestTx.filter(t => t.feishu_id).length} synced Tx. Plan to delete ${txToDelete.length}.`);
+
+        for (const tx of txToDelete) {
+            await db.execute('DELETE FROM transactions WHERE id = ?', [tx.id]);
+            hasChanges = true;
+            console.log(`🗑️ Deleted transaction (removed from Feishu): ${tx.id} / FeishuID: ${tx.feishu_id}`);
+        }
+
+        const custToDelete = latestCust.filter(c => c.feishu_id && !cloudCustomerIds.has(c.feishu_id));
+        for (const cust of custToDelete) {
+            const [txCount] = await db.select('SELECT COUNT(*) as count FROM transactions WHERE customerId = ?', [cust.id]);
+            if (txCount.count === 0) {
+                await db.execute('DELETE FROM customers WHERE id = ?', [cust.id]);
+                hasChanges = true;
+                console.log(`🗑️ Deleted customer (removed from Feishu): ${cust.name}`);
+            } else {
+                console.log(`⚠️ Skipped deleting customer ${cust.name} (has ${txCount.count} local transactions)`);
+            }
+        }
+
+        if (hasChanges) refreshData();
+        return {
+            added: catsAdded ? 'Categories' : '',
+            deleted: txToDelete.length + custToDelete.length,
+            updated: hasChanges
+        };
+    };
+
     // Helper: Unified Sync Handler (Unified Logic)
     const syncHandler = async (config, isManual) => {
         if (isSyncing.current) {
@@ -125,172 +280,7 @@ export const DataProvider = ({ children }) => {
 
     const autoPullCloud = (config) => syncHandler(config, false);
 
-    // Helper: Save Pulled Data (Merge logic)
-    const savePulledData = async (fContacts = [], fTransactions = [], fCategories = []) => {
-        let hasChanges = false;
 
-        // 1. Merge Categories FIRST so they are available for record resolution
-        const [initialCats] = await Promise.all([
-            db.select('SELECT * FROM categories')
-        ]);
-
-        const currentCats = new Map(initialCats.map(c => [c.name.trim().toLowerCase(), c]));
-        const entityNames = new Set(latestCust.map(c => c.name.trim().toLowerCase()));
-
-        let catsAdded = false;
-        for (const cloudCatName of fCategories) {
-            const name = (cloudCatName || "").trim();
-            if (!name) continue;
-
-            const lowerName = name.toLowerCase();
-            // SKIP categories that are actually customer/supplier names (pollution protection)
-            if (entityNames.has(lowerName)) continue;
-
-            if (!currentCats.has(lowerName)) {
-                // Default new cloud categories to 'Income' (safer visibility)
-                await db.execute('INSERT INTO categories (name, type) VALUES (?, ?)', [name, 'Income']);
-                catsAdded = true;
-                hasChanges = true;
-                console.log(`Pulled new category from cloud: ${name}`);
-            }
-        }
-
-        // Fetch latest state to avoid staleness
-        const [latestCust, latestTx, latestCats] = await Promise.all([
-            db.select('SELECT * FROM customers'),
-            db.select('SELECT * FROM transactions'),
-            catsAdded ? db.select('SELECT * FROM categories') : Promise.resolve(initialCats)
-        ]);
-
-        // 2. Merge Customers
-        const currentById = new Map(latestCust.filter(c => c.feishu_id).map(c => [c.feishu_id, c]));
-        const currentByName = new Map(latestCust.map(c => [c.name, c]));
-
-        for (const fc of fContacts) {
-            let existing = currentById.get(fc.feishu_id);
-
-            if (!existing) {
-                // Fallback to name match for unlinked records
-                existing = currentByName.get(fc.name);
-            }
-
-            // Resolve Category Names to IDs accurately
-            const resolveCatIds = (names) => {
-                if (!names || !Array.isArray(names)) return '[]';
-                const ids = names.map(n => latestCats.find(c => c.name.trim() === n.trim())?.id).filter(Boolean);
-                return JSON.stringify(ids);
-            };
-
-            const targetCatIds = resolveCatIds(fc.categoryNames);
-
-            if (existing) {
-                // Update existing record if any field changed
-                const needsUpdate =
-                    existing.name !== fc.name ||
-                    existing.phone !== (fc.phone || '') ||
-                    existing.role !== fc.role ||
-                    existing.feishu_id !== fc.feishu_id ||
-                    existing.categoryIds !== targetCatIds;
-
-                if (needsUpdate) {
-                    await db.execute(
-                        'UPDATE customers SET name = ?, phone = ?, role = ?, feishu_id = ?, categoryIds = ? WHERE id = ?',
-                        [fc.name, fc.phone || '', fc.role, fc.feishu_id, targetCatIds, existing.id]
-                    );
-                    hasChanges = true;
-                    console.log(`Updated customer from cloud: ${fc.name}`);
-                }
-            } else {
-                // INSERT new record
-                await db.execute(
-                    'INSERT INTO customers (name, phone, role, balance, status, feishu_id, categoryIds) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                    [fc.name, fc.phone || '', fc.role, fc.balance, 'Active', fc.feishu_id, targetCatIds]
-                );
-                hasChanges = true;
-                console.log(`Pulled new customer: ${fc.name}`);
-            }
-        }
-
-        // 3. Merge Transactions
-        const currentTxById = new Map(latestTx.filter(t => t.feishu_id).map(t => [t.feishu_id, t]));
-        const currentTxByCompositeKey = new Map(latestTx.map(t => {
-            const customer = latestCust.find(c => c.id === t.customerId);
-            const cName = customer ? customer.name : "未知";
-            return [`${t.date}_${cName}_${t.amount}_${t.type === 'Income' ? '收入' : '支出'}`, t];
-        }));
-
-        for (const ft of fTransactions) {
-            const ftTypeStr = ft.type === 'Income' ? '收入' : '支出';
-            const compositeKey = `${ft.date}_${ft.customerName}_${ft.amount}_${ftTypeStr}`;
-
-            let existingTx = currentTxById.get(ft.feishu_id);
-            if (!existingTx) {
-                existingTx = currentTxByCompositeKey.get(compositeKey);
-            }
-
-            if (existingTx) {
-                // Update feishu_id if missing or update details
-                if (!existingTx.feishu_id || existingTx.feishu_id !== ft.feishu_id) {
-                    await db.execute('UPDATE transactions SET feishu_id = ? WHERE id = ?', [ft.feishu_id, existingTx.id]);
-                }
-            } else {
-                // Find or create customer for this transaction
-                let customer = latestCust.find(c => c.name === ft.customerName);
-                let customerId = customer ? customer.id : null;
-
-                if (!customerId && ft.customerName !== "Unknown") {
-                    await db.execute('INSERT INTO customers (name, status, role) VALUES (?, ?, ?)', [ft.customerName, 'Active', 'Customer']);
-                    const [newC] = await db.select('SELECT id FROM customers WHERE name = ?', [ft.customerName]);
-                    customerId = newC.id;
-                    hasChanges = true;
-                }
-
-                const txId = `ORD-${Math.floor(Math.random() * 100000).toString().padStart(6, '0')}`;
-                await db.execute(
-                    'INSERT INTO transactions (id, customerId, amount, type, category, date, description, status, feishu_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                    [txId, customerId, ft.amount, ft.type, ft.category, ft.date, ft.description || '来自飞书同步', 'Completed', ft.feishu_id]
-                );
-                hasChanges = true;
-                console.log(`Pulled new transaction: ${ft.date} ${ft.customerName}`);
-            }
-        }
-
-        // 4. Delete Sync: Remove local records that were deleted in Feishu
-        // Only delete records that have a feishu_id (cloud-synced) but are no longer in cloud data
-        const cloudTxIds = new Set(fTransactions.map(ft => ft.feishu_id).filter(Boolean));
-        const cloudCustomerIds = new Set(fContacts.map(fc => fc.feishu_id).filter(Boolean));
-
-        // Delete transactions that were removed from Feishu
-        // Delete transactions that were removed from Feishu
-        const txToDelete = latestTx.filter(t => t.feishu_id && !cloudTxIds.has(t.feishu_id));
-        console.log(`🗑️ Deletion Check: Cloud has ${cloudTxIds.size} synced Tx. Local has ${latestTx.filter(t => t.feishu_id).length} synced Tx. Plan to delete ${txToDelete.length}.`);
-
-        for (const tx of txToDelete) {
-            await db.execute('DELETE FROM transactions WHERE id = ?', [tx.id]);
-            hasChanges = true;
-            console.log(`🗑️ Deleted transaction (removed from Feishu): ${tx.id} / FeishuID: ${tx.feishu_id}`);
-        }
-
-        // Delete customers that were removed from Feishu (only if they have no local transactions)
-        const custToDelete = latestCust.filter(c => c.feishu_id && !cloudCustomerIds.has(c.feishu_id));
-        for (const cust of custToDelete) {
-            const [txCount] = await db.select('SELECT COUNT(*) as count FROM transactions WHERE customerId = ?', [cust.id]);
-            if (txCount.count === 0) {
-                await db.execute('DELETE FROM customers WHERE id = ?', [cust.id]);
-                hasChanges = true;
-                console.log(`🗑️ Deleted customer (removed from Feishu): ${cust.name}`);
-            } else {
-                console.log(`⚠️ Skipped deleting customer ${cust.name} (has ${txCount.count} local transactions)`);
-            }
-        }
-
-        if (hasChanges) refreshData();
-        return {
-            added: catsAdded ? 'Categories' : '',
-            deleted: txToDelete.length + custToDelete.length,
-            updated: hasChanges
-        };
-    };
 
     // Helper: Auto Push
     // Helper: Auto Push with Debounce & Lock
