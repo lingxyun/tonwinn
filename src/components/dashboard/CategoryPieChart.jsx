@@ -9,83 +9,92 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'
 const CategoryPieChart = ({ transactions }) => {
     const [hiddenCategories, setHiddenCategories] = useState(new Set());
     const [page, setPage] = useState(0);
+    const [mounted, setMounted] = useState(false);
     const ITEMS_PER_PAGE = 6;
 
-    // Process data similar to before, but keep index stable for colors
+    // Fast-track mount to avoid layout-shift issues with Recharts
+    React.useEffect(() => {
+        const timer = setTimeout(() => setMounted(true), 50);
+        return () => clearTimeout(timer);
+    }, []);
+
     const data = React.useMemo(() => {
+        if (!transactions || transactions.length === 0) return [];
         const categoryMap = {};
 
-        transactions.forEach(tx => {
-            if (tx.status !== 'Completed') return;
-            const category = tx.category || '未分类';
-            if (!categoryMap[category]) {
-                categoryMap[category] = 0;
-            }
-            categoryMap[category] += Math.abs(tx.amount);
-        });
+        // Use a traditional loop for performance if transactions is large
+        for (let i = 0; i < transactions.length; i++) {
+            const tx = transactions[i];
+            if (tx.status === 'Cancelled') continue;
 
-        // 1. Convert to array and sort desc by value
-        const sortedData = Object.keys(categoryMap)
-            .map(name => ({ name, value: categoryMap[name] }))
+            const amount = parseFloat(tx.amount);
+            if (!amount || isNaN(amount)) continue;
+
+            const category = tx.category || '未分类';
+            categoryMap[category] = (categoryMap[category] || 0) + Math.abs(amount);
+        }
+
+        const sortedData = Object.entries(categoryMap)
+            .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value);
 
-        // 2. Assign color based on sorted index PERMANENTLY (so it doesn't shift when hiding)
         return sortedData.map((item, index) => ({
             ...item,
             color: COLORS[index % COLORS.length]
         }));
     }, [transactions]);
 
-    // Data to be rendered (filtered by hidden state)
-    // We don't remove them from array to keep colors stable, we just set value to 0 or use filter for Pie
-    // If we use filter, we lose the original color mapping if not careful.
-    // We already assigned 'color' property in useMemo, so we can filter safely now.
-    const activeData = data.filter(item => !hiddenCategories.has(item.name));
+    // Legend Logic...
+    const activeData = React.useMemo(() =>
+        data.filter(item => !hiddenCategories.has(item.name)),
+        [data, hiddenCategories]);
 
-    // Legend Data (with pages)
     const totalPages = Math.ceil(data.length / ITEMS_PER_PAGE);
     const legendItems = data.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
 
     const toggleCategory = (name) => {
-        const newHidden = new Set(hiddenCategories);
-        if (newHidden.has(name)) {
-            newHidden.delete(name);
-        } else {
-            newHidden.add(name);
-        }
-        setHiddenCategories(newHidden); // Don't allow hiding the last one? Optionally.
+        setHiddenCategories(prev => {
+            const next = new Set(prev);
+            if (next.has(name)) next.delete(name);
+            else next.add(name);
+            return next;
+        });
     };
 
-    if (data.length === 0) {
+    if (!mounted || data.length === 0) {
         return (
-            <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-                暂无数据
+            <div className="h-full w-full flex items-center justify-center">
+                <div className="flex flex-col items-center gap-2">
+                    <div className="w-8 h-8 rounded-full border-2 border-slate-100 dark:border-slate-800 border-t-primary animate-spin" />
+                    <span className="text-xs text-slate-400 font-medium">加载中...</span>
+                </div>
             </div>
         );
     }
 
     return (
         <div className="h-full w-full flex flex-col">
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 w-full min-h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie
                             data={activeData}
                             cx="50%"
                             cy="50%"
-                            innerRadius={60}
-                            outerRadius={80}
+                            innerRadius="65%"
+                            outerRadius="90%"
                             paddingAngle={5}
                             dataKey="value"
+                            nameKey="name"
+                            isAnimationActive={false}
                         >
-                            {activeData.map((entry, index) => (
+                            {activeData.map((entry) => (
                                 <Cell key={`cell-${entry.name}`} fill={entry.color} stroke="none" />
                             ))}
                         </Pie>
                         <Tooltip
-                            contentStyle={{ backgroundColor: 'var(--tooltip-bg, #fff)', borderColor: 'var(--tooltip-border, #e2e8f0)', borderRadius: '8px' }}
-                            itemStyle={{ color: 'var(--tooltip-text, #1e293b)' }}
-                            formatter={(value) => `¥${value.toFixed(2)}`}
+                            contentStyle={{ backgroundColor: '#fff', border: 'none', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                            formatter={(value) => `¥${parseFloat(value).toLocaleString()}`}
                         />
                     </PieChart>
                 </ResponsiveContainer>

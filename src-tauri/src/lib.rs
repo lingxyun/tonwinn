@@ -22,7 +22,10 @@ pub fn run() {
         .setup(|_app| Ok(()))
         .invoke_handler(tauri::generate_handler![
             commands::verify_password,
-            commands::hash_password
+            commands::hash_password,
+            commands::export_database,
+            commands::restore_database,
+            commands::open_data_folder
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

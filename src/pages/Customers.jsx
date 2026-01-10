@@ -281,9 +281,9 @@ const Customers = () => {
                             交易记录
                         </h3>
                         <button
-                            onClick={() => exportTransactionDetailsToCSV(selectedCustomer.id)}
+                            onClick={() => exportTransactionDetailsToCSV(selectedCustomer.id, 'Income')}
                             className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-                            title="导出此客户交易记录"
+                            title="导出此客户全量收入记录"
                         >
                             <Download className="w-4 h-4" />
                         </button>
@@ -404,10 +404,10 @@ const Customers = () => {
                                     <Download className="w-4 h-4 text-blue-500" /> 导出客户名录
                                 </button>
                                 <button
-                                    onClick={() => { exportTransactionDetailsToCSV(); setIsDataMenuOpen(false); }}
+                                    onClick={() => { exportTransactionDetailsToCSV(null, 'Income'); setIsDataMenuOpen(false); }}
                                     className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2"
                                 >
-                                    <FileSpreadsheet className="w-4 h-4 text-emerald-500" /> 导出交易全量明细
+                                    <FileSpreadsheet className="w-4 h-4 text-emerald-500" /> 导出全量收入明细
                                 </button>
                                 <button
                                     onClick={() => { downloadCustomerTemplate(); setIsDataMenuOpen(false); }}

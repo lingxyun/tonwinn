@@ -8,12 +8,51 @@ import { feishuService } from '../../services/feishuService';
 import { toast } from 'sonner';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
+import { check } from '@tauri-apps/plugin-updater';
+import { getVersion } from '@tauri-apps/api/app';
+import { relaunch } from '@tauri-apps/plugin-process';
+import Modal from '../ui/Modal';
 
 const Sidebar = ({ isDarkMode, toggleTheme, isCollapsed, setIsCollapsed }) => {
     const { user, logout } = useAuth();
     const { settings, feishuConfig } = useSettings();
     const { refreshData, syncFromCloud } = useData();
     const [isSyncing, setIsSyncing] = useState(false);
+    const [appVersion, setAppVersion] = useState('');
+    const [updateResult, setUpdateResult] = useState(null);
+    const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+    const [isUpdating, setIsUpdating] = useState(false);
+
+    // Auto check updates
+    React.useEffect(() => {
+        getVersion().then(setAppVersion);
+
+        const checkUpdate = async () => {
+            try {
+                const update = await check();
+                if (update) setUpdateResult(update);
+            } catch (e) {
+                console.error("Update check failed:", e);
+            }
+        };
+        // Check after 2 seconds to not block startup
+        const timer = setTimeout(checkUpdate, 2000);
+        return () => clearTimeout(timer);
+    }, []);
+
+    const handleDoUpdate = async () => {
+        if (!updateResult) return;
+        setIsUpdating(true);
+        try {
+            toast.loading("正在下载更新...", { id: 'sidebar-update' });
+            await updateResult.downloadAndInstall();
+            toast.success("更新完成，正在重启...", { id: 'sidebar-update' });
+            setTimeout(() => relaunch(), 1500);
+        } catch (e) {
+            toast.error("更新失败: " + e.message, { id: 'sidebar-update' });
+            setIsUpdating(false);
+        }
+    };
 
     const handleSync = async () => {
         if (!feishuConfig?.appId || !feishuConfig?.appSecret || !feishuConfig?.appToken) {
@@ -280,11 +319,71 @@ const Sidebar = ({ isDarkMode, toggleTheme, isCollapsed, setIsCollapsed }) => {
                                 <LogOut size={10} strokeWidth={3} />
                                 退出系统
                             </button>
-                            <div className="mt-1 text-[8px] text-slate-400 font-mono">v0.1.78 (Bidirectional Fix)</div>
+                            <div
+                                onClick={() => updateResult && setIsUpdateModalOpen(true)}
+                                className={cn(
+                                    "mt-2 flex items-center gap-2 transition-all",
+                                    updateResult ? "text-emerald-600 dark:text-emerald-400 cursor-pointer hover:scale-105 active:scale-95" : "text-slate-400"
+                                )}
+                            >
+                                <span className="text-[10px] font-black font-mono">v{appVersion || '0.1.79'}</span>
+                                {updateResult && (
+                                    <span className="flex items-center gap-1 animate-pulse bg-emerald-500 text-white px-2 py-0.5 rounded-full text-[9px] font-black tracking-tighter shadow-sm shadow-emerald-500/20">
+                                        <div className="w-1 h-1 rounded-full bg-white" />
+                                        发现新版本
+                                    </span>
+                                )}
+                            </div>
                         </motion.div>
                     )}
                 </div>
             </div>
+
+            {/* Update Modal */}
+            <Modal
+                isOpen={isUpdateModalOpen}
+                onClose={() => !isUpdating && setIsUpdateModalOpen(false)}
+                title="发现新版本"
+            >
+                <div className="space-y-6">
+                    <div className="flex items-center gap-4 bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-800/50">
+                        <div className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0">
+                            <Cloud size={24} />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-slate-900 dark:text-white">版本 {updateResult?.version} 已准备好</h3>
+                            <p className="text-xs text-slate-500 mt-0.5">下载并安装以享受最新功能和优化</p>
+                        </div>
+                    </div>
+
+                    {updateResult?.body && (
+                        <div className="space-y-3">
+                            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">更新内容：</h4>
+                            <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-xl text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium whitespace-pre-wrap border border-slate-100 dark:border-slate-800">
+                                {updateResult.body}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex flex-col gap-3 pt-4">
+                        <button
+                            onClick={handleDoUpdate}
+                            disabled={isUpdating}
+                            className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300 text-white rounded-2xl text-sm font-black transition-all premium-shadow flex items-center justify-center gap-2"
+                        >
+                            {isUpdating ? (
+                                <>
+                                    <RefreshCw className="w-4 h-4 animate-spin" />
+                                    正在同步中...
+                                </>
+                            ) : (
+                                "立即下载并安装"
+                            )}
+                        </button>
+                        <p className="text-[10px] text-center text-slate-400">更新完成后系统将自动重启</p>
+                    </div>
+                </div>
+            </Modal>
         </motion.div>
     );
 };

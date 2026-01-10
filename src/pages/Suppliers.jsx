@@ -288,9 +288,9 @@ const Suppliers = () => {
                             往来记录
                         </h3>
                         <button
-                            onClick={() => exportTransactionDetailsToCSV(selectedSupplier.id)}
+                            onClick={() => exportTransactionDetailsToCSV(selectedSupplier.id, 'Expense')}
                             className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-                            title="导出此供货商往来明细"
+                            title="导出此供货商全量支出明细"
                         >
                             <Download className="w-4 h-4" />
                         </button>
@@ -414,10 +414,10 @@ const Suppliers = () => {
                                     <Download className="w-4 h-4 text-emerald-500" /> 导出供货商名单 (CSV)
                                 </button>
                                 <button
-                                    onClick={() => { exportTransactionDetailsToCSV(); setIsDataMenuOpen(false); }}
+                                    onClick={() => { exportTransactionDetailsToCSV(null, 'Expense'); setIsDataMenuOpen(false); }}
                                     className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2"
                                 >
-                                    <FileSpreadsheet className="w-4 h-4 text-blue-500" /> 导出往来明细
+                                    <FileSpreadsheet className="w-4 h-4 text-blue-500" /> 导出全量支出明细
                                 </button>
                                 <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
                                 <button

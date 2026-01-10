@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { ArrowUpRight, ArrowDownRight, Users, DollarSign, ShoppingBag, Activity, Trash2, Download, Upload, Plus } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Users, DollarSign, ShoppingBag, Activity, Trash2, Download, Upload, Plus, Database, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 import Modal from '../components/ui/Modal';
@@ -82,7 +82,10 @@ const Dashboard = () => {
         addCustomer,
         resetData,
         importData,
-        stats: contextStats
+        stats: contextStats,
+        exportFullBackup,
+        restoreFullBackup,
+        openDataFolder
     } = useData();
 
     const { setIsTxModalOpen } = useOutletContext();
@@ -105,9 +108,10 @@ const Dashboard = () => {
             if (tx.status === 'Completed') {
                 const date = new Date(tx.date);
                 const monthName = date.toLocaleString('zh-CN', { month: 'short' });
+                const amount = parseFloat(tx.amount) || 0;
                 if (last6Months.hasOwnProperty(monthName)) {
-                    if (tx.type === 'Income') last6Months[monthName].revenue += tx.amount;
-                    else last6Months[monthName].expense += tx.amount;
+                    if (tx.type === 'Income') last6Months[monthName].revenue += amount;
+                    else last6Months[monthName].expense += amount;
                 }
             }
         });
@@ -128,9 +132,10 @@ const Dashboard = () => {
 
         localTransactions.forEach(tx => {
             const txDate = new Date(tx.date);
+            const amount = parseFloat(tx.amount) || 0;
             if (txDate >= startOfWeek && tx.type === 'Income') {
                 const dayIndex = (txDate.getDay() + 6) % 7;
-                data[dayIndex].amount += tx.amount;
+                data[dayIndex].amount += amount;
             }
         });
         return data;
@@ -202,18 +207,23 @@ const Dashboard = () => {
                         <Trash2 className="w-5 h-5" />
                     </button>
                     <div className="flex bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-1.5 premium-shadow">
-                        <button onClick={handleExport} className="px-5 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl transition-colors flex items-center gap-2.5">
-                            <Download className="w-4 h-4" /> 导出
+                        <button onClick={exportFullBackup} className="px-5 py-2 text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl transition-colors flex items-center gap-2.5" title="导出 1:1 数据库副本（推荐）">
+                            <Database className="w-4 h-4" /> 系统全量备份
                         </button>
                         <div className="w-px bg-slate-100 dark:bg-white/10 my-1.5 mx-1" />
-                        <label className="px-5 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl transition-colors flex items-center gap-2.5 cursor-pointer">
-                            <Upload className="w-4 h-4" /> 导入
-                            <input type="file" accept=".json" onChange={handleImport} className="hidden" />
-                        </label>
+                        <button onClick={restoreFullBackup} className="px-5 py-2 text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl transition-colors flex items-center gap-2.5" title="从 .db 文件恢复系统">
+                            <RefreshCw className="w-4 h-4" /> 还原
+                        </button>
+                        <div className="w-px bg-slate-100 dark:bg-white/10 my-1.5 mx-1" />
+                        <button onClick={openDataFolder} className="px-5 py-2 text-sm font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl transition-colors flex items-center gap-2.5" title="打开本地数据文件夹">
+                            <Plus className="w-4 h-4 rotate-45" /> 数据目录
+                        </button>
                     </div>
+
                     <button onClick={() => setIsTxModalOpen(true)} className="px-7 py-3 bg-primary text-white rounded-2xl text-sm font-black hover:bg-primary/90 transition-all premium-shadow active:scale-95 flex items-center gap-3">
                         <Plus className="w-5 h-5" /> 新建交易
                     </button>
+
                 </div>
             </div>
 
@@ -372,10 +382,13 @@ const Dashboard = () => {
                     {/* 2. AI Insights */}
                     <AIInsightsCard transactions={localTransactions} customers={customers} />
 
-                    {/* 2. Composition Analysis */}
-                    <div className="glass-card rounded-[2rem] p-8 flex flex-col">
-                        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">分类构成透视</h2>
-                        <div className="h-[280px] w-full">
+                    {/* 3. Category Distribution */}
+                    <div className="glass-card rounded-[2rem] p-8 min-h-[480px] flex flex-col">
+                        <div className="flex justify-between items-start mb-10">
+                            <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">分类构成透视</h2>
+                            <Activity className="w-5 h-5 text-primary" />
+                        </div>
+                        <div className="h-[340px] mt-4">
                             <CategoryPieChart transactions={localTransactions} />
                         </div>
                     </div>

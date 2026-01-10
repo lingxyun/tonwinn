@@ -1,9 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
 import * as db from '../utils/tauriDb';
-import { save } from '@tauri-apps/plugin-dialog';
-import { writeTextFile, BaseDirectory, exists, mkdir, readDir, remove } from '@tauri-apps/plugin-fs';
+import { save, open, ask } from '@tauri-apps/plugin-dialog';
+import { writeTextFile, BaseDirectory, exists, mkdir, readDir, remove, copyFile } from '@tauri-apps/plugin-fs';
+import { appDataDir, join } from '@tauri-apps/api/path';
+import { relaunch } from '@tauri-apps/plugin-process';
 import { useSettings } from './SettingsContext';
 import { feishuService } from '../services/feishuService';
 
@@ -246,7 +249,6 @@ export const DataProvider = ({ children }) => {
 
         if (hasChanges) refreshData();
         return {
-            added: catsAdded ? 'Categories' : '',
             added: catsAdded ? 'Categories' : '',
             deleted: txToDelete.length + custToDelete.length,
             updated: hasChanges,
@@ -615,10 +617,13 @@ export const DataProvider = ({ children }) => {
         downloadCSV(csvContent, `${typeName}名录_${new Date().toLocaleDateString()}.csv`);
     };
 
-    const exportTransactionDetailsToCSV = (targetCustomerId = null) => {
+    const exportTransactionDetailsToCSV = (targetCustomerId = null, typeFilter = null) => {
         let exportData = transactions;
         if (targetCustomerId) {
-            exportData = transactions.filter(t => t.customerId === targetCustomerId);
+            exportData = exportData.filter(t => t.customerId === targetCustomerId);
+        }
+        if (typeFilter) {
+            exportData = exportData.filter(t => t.type === typeFilter);
         }
 
         const headers = ['日期', '客户名称', '金额', '类型', '分类', '备注', '交易ID'];
@@ -798,9 +803,12 @@ export const DataProvider = ({ children }) => {
             let custFailures = 0;
             for (const cust of source.customers) {
                 try {
+                    const id = parseInt(cust.id);
+                    if (isNaN(id)) throw new Error(`Invalid customer ID: ${cust.id}`);
+
                     await db.execute(
                         'INSERT OR REPLACE INTO customers (id, name, email, phone, address, balance, status, created_at, role, categoryIds) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        [cust.id, cust.name, cust.email || '', cust.phone, cust.address || '', cust.balance || 0, cust.status || 'Active', cust.created_at || new Date().toISOString(), cust.role || 'Customer', cust.categoryIds || (cust.categoryId ? JSON.stringify([cust.categoryId]) : '[]')]
+                        [id, cust.name, cust.email || '', cust.phone, cust.address || '', parseFloat(cust.balance) || 0, cust.status || 'Active', cust.created_at || new Date().toISOString(), cust.role || 'Customer', cust.categoryIds || (cust.categoryId ? JSON.stringify([cust.categoryId]) : '[]')]
                     );
                 } catch (e) {
                     console.error(`Failed to insert customer ${cust.name}:`, e);
@@ -814,9 +822,13 @@ export const DataProvider = ({ children }) => {
             let txFailures = 0;
             for (const tx of source.transactions) {
                 try {
+                    const custId = parseInt(tx.customerId);
+                    const amount = parseFloat(tx.amount);
+                    if (isNaN(amount)) throw new Error(`Invalid amount: ${tx.amount}`);
+
                     await db.execute(
                         'INSERT OR REPLACE INTO transactions (id, customerId, amount, type, category, date, description, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        [tx.id, tx.customerId, tx.amount, tx.type, tx.category || 'Uncategorized', tx.date || new Date().toISOString().split('T')[0], tx.description || '', tx.status || 'Completed', tx.created_at || new Date().toISOString()]
+                        [tx.id, custId, amount, tx.type, tx.category || 'Uncategorized', tx.date || new Date().toISOString().split('T')[0], tx.description || '', tx.status || 'Completed', tx.created_at || new Date().toISOString()]
                     );
                 } catch (e) {
                     console.error(`Failed to insert transaction ${tx.id}:`, e);
@@ -1056,7 +1068,65 @@ export const DataProvider = ({ children }) => {
             importTransactionsFromCSV,
             refreshData,
             syncFromCloud: (config) => syncHandler(config, true), // Export manual sync (throws error)
-            stats: getStats()
+            stats: getStats(),
+            exportFullBackup: async () => {
+                try {
+                    const dataDir = await appDataDir();
+                    const dbPath = await join(dataDir, 'financial.db');
+                    console.log('Attempting to export database from:', dbPath);
+
+                    const destPath = await save({
+                        title: '导出系统全量备份',
+                        filters: [{ name: '数据库文件', extensions: ['db'] }],
+                        defaultPath: `financial_backup_${new Date().toISOString().split('T')[0]}.db`
+                    });
+
+                    if (destPath) {
+                        toast.loading('正在导出备份...', { id: 'db-export' });
+                        await invoke('export_database', { destPath });
+                        toast.success('全量备份导出成功', { id: 'db-export' });
+                    }
+                } catch (e) {
+                    console.error('Export failed:', e);
+                    toast.error('备份导出失败: ' + (e?.message || e || '未知错误'));
+                }
+            },
+            restoreFullBackup: async () => {
+                try {
+                    const selected = await open({
+                        title: '选择备份文件以还原',
+                        filters: [{ name: '数据库文件', extensions: ['db'] }],
+                        multiple: false
+                    });
+
+                    if (selected) {
+                        const confirmed = await ask('确定要还原此备份吗？当前所有数据将被覆盖，还原后软件将自动重启。', {
+                            title: '系统还原确认',
+                            kind: 'warning'
+                        });
+
+                        if (confirmed) {
+                            toast.loading('正在还原数据库...', { id: 'db-restore' });
+                            await invoke('restore_database', { srcPath: selected });
+                            toast.success('还原完成，正在重启...', { id: 'db-restore' });
+                            // 延时一会确保文件写入并释放锁定后再重启
+                            setTimeout(async () => {
+                                await relaunch();
+                            }, 500);
+                        }
+                    }
+                } catch (e) {
+                    console.error('Restore failed:', e);
+                    toast.error('还原失败: ' + (e?.message || e || '未知错误'));
+                }
+            },
+            openDataFolder: async () => {
+                try {
+                    await invoke('open_data_folder');
+                } catch (e) {
+                    toast.error('无法打开文件夹: ' + (e?.message || e || '未知错误'));
+                }
+            }
         }}>
             {children}
         </DataContext.Provider>
