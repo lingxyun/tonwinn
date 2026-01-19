@@ -25,7 +25,9 @@ pub fn run() {
             commands::hash_password,
             commands::export_database,
             commands::restore_database,
-            commands::open_data_folder
+            commands::open_data_folder,
+            commands::get_machine_id,
+            commands::verify_license
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

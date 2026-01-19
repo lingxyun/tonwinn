@@ -19,6 +19,7 @@ import { Toaster } from 'sonner';
 
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import PublicRoute from './components/auth/PublicRoute';
+import AuthorizationOverlay from './components/auth/AuthorizationOverlay';
 
 import SearchModal from './components/dashboard/SearchModal';
 
@@ -41,28 +42,30 @@ function App() {
       <AuthProvider>
         <SettingsProvider>
           <DataProvider>
-            <Routes>
-              <Route path="/login" element={
-                <PublicRoute>
-                  <Login />
-                </PublicRoute>
-              } />
-              <Route path="/" element={
-                <ProtectedRoute>
-                  <Layout />
-                </ProtectedRoute>
-              }>
-                <Route index element={<Dashboard />} />
-                <Route path="customers" element={<Customers />} />
-                <Route path="suppliers" element={<Suppliers />} />
-                <Route path="orders" element={<Orders />} />
-                <Route path="orders/categories" element={<Categories />} />
-                <Route path="accounts" element={<Accounts />} />
-                <Route path="settings" element={<Settings />} />
-              </Route>
-            </Routes>
-            <Toaster position="top-center" richColors />
-            <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+            <AuthorizationOverlay>
+              <Routes>
+                <Route path="/login" element={
+                  <PublicRoute>
+                    <Login />
+                  </PublicRoute>
+                } />
+                <Route path="/" element={
+                  <ProtectedRoute>
+                    <Layout />
+                  </ProtectedRoute>
+                }>
+                  <Route index element={<Dashboard />} />
+                  <Route path="customers" element={<Customers />} />
+                  <Route path="suppliers" element={<Suppliers />} />
+                  <Route path="orders" element={<Orders />} />
+                  <Route path="orders/categories" element={<Categories />} />
+                  <Route path="accounts" element={<Accounts />} />
+                  <Route path="settings" element={<Settings />} />
+                </Route>
+              </Routes>
+              <Toaster position="top-center" richColors />
+              <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+            </AuthorizationOverlay>
           </DataProvider>
         </SettingsProvider>
       </AuthProvider>

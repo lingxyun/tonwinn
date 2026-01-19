@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { cn } from '../lib/utils';
-import { Save, Settings as SettingsIcon, Upload, X, RefreshCw, Info, ExternalLink, ArrowRight, User, Cloud } from 'lucide-react';
+import { Save, Settings as SettingsIcon, Upload, X, RefreshCw, Info, ExternalLink, ArrowRight, User, Cloud, Key, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { feishuService } from '../services/feishuService';
 import { check } from '@tauri-apps/plugin-updater';
 import { getVersion } from '@tauri-apps/api/app';
 import { relaunch } from '@tauri-apps/plugin-process';
+import { invoke } from '@tauri-apps/api/core';
 
 const Settings = () => {
     const { settings, updateSettings, feishuConfig, updateFeishuConfig } = useSettings();
@@ -25,6 +26,7 @@ const Settings = () => {
     const [isInitializing, setIsInitializing] = useState(false);
     const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
     const [appVersion, setAppVersion] = useState('');
+    const [machineId, setMachineId] = useState('');
 
     useEffect(() => {
         if (settings) {
@@ -45,7 +47,15 @@ const Settings = () => {
 
     useEffect(() => {
         getVersion().then(setAppVersion);
+        invoke('get_machine_id').then(setMachineId).catch(console.error);
     }, []);
+
+    const handleResetAuth = () => {
+        if (window.confirm('确定要注销当前系统的授权吗？注销后软件将重新进入锁定状态，需要重新激活。')) {
+            localStorage.removeItem('license_key');
+            window.location.reload();
+        }
+    };
 
     const checkForUpdates = async () => {
         setIsCheckingUpdate(true);
@@ -426,11 +436,31 @@ const Settings = () => {
                         <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-emerald-100 dark:bg-emerald-900/20 rounded-lg text-emerald-600">
-                                    <RefreshCw size={18} />
+                                    <ShieldCheck size={18} />
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">在线更新</span>
-                                    <span className="text-[10px] text-emerald-500">已开启签名校验</span>
+                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">系统授权状态</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] text-emerald-500 font-bold uppercase">已激活 (正式版)</span>
+                                        <button
+                                            onClick={handleResetAuth}
+                                            className="text-[9px] text-slate-400 hover:text-rose-500 underline underline-offset-2 transition-colors font-bold"
+                                        >
+                                            [注销激活]
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg text-blue-600">
+                                    <Key size={18} />
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">机器识别码</span>
+                                    <span className="text-[10px] text-blue-500 font-mono font-bold">{machineId || '获取中...'}</span>
                                 </div>
                             </div>
                         </div>

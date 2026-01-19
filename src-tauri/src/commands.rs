@@ -77,3 +77,22 @@ pub async fn open_data_folder(app: AppHandle) -> Result<(), String> {
 
     Ok(())
 }
+
+const SECRET_SALT: &str = "tonwin-financial-2026-secure";
+
+#[tauri::command]
+pub fn get_machine_id() -> Result<String, String> {
+    let uid = machine_uid::get().map_err(|e| e.to_string())?;
+    // 为保持简洁，取 md5 的前 16 位大写作为机器识别码
+    let machine_id = format!("{:x}", md5::compute(uid))[..16].to_uppercase();
+    Ok(machine_id)
+}
+
+#[tauri::command]
+pub fn verify_license(machine_id: &str, license_key: &str) -> bool {
+    if license_key.is_empty() { return false; }
+    // 算法：MD5(machine_id + SECRET_SALT)
+    let combined = format!("{}{}", machine_id, SECRET_SALT);
+    let expected = format!("{:x}", md5::compute(combined));
+    license_key.trim().to_lowercase() == expected.to_lowercase()
+}

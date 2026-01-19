@@ -28,9 +28,18 @@
 - [x] 优化"电子收据预览"适配手机端 (实现响应式智能缩放)。 <!-- id: 31 -->
 - [x] 调整全局布局和样式以适配移动设备触控操作。 <!-- id: 30 -->
 
-## 第六阶段：未来功能规划 (Phase 6: Future Roadmap - Planned)
+## 第六阶段：云端协同与生产环境部署 (Phase 6: Cloud & Production Deployment)
+- [ ] **🌐 中央云服务器模式 (Centralized Cloud Architecture)**: 
+    - 实现从本地 SQLite 到云端 MySQL/RDS 的平滑迁移。
+    - 部署独立后端 API (Node.js/Rust) 实现多地、多人同时在线操作。
+    - 支持 Docker 容器化一键部署到阿里云/腾讯云。
+- [ ] **🛡️ 每日自动备份 (Daily Auto-Backup)**: 程序启动时检测并自动备份数据库，防止数据误删或损坏。
+- [ ] **📅 账目周历/月历 (Financial Calendar)**: 全新的日历统计视角，直观查看每日盈亏盈余。
+- [ ] **🌓 金额隐私遮罩 (Privacy Toggle)**: 一键模糊全站金额，在公共场合使用更安心。
+- [ ] **📋 订单批量操作 (Batch Actions)**: 支持多选勾选，实现批量更改分类、状态或一键归档。
+- [ ] **⌨️ 全局极速录入 (Global Rapid Entry)**: 支持全局快捷键呼出记账窗口，极速录账不中断工作。
+
+## 第七阶段：未来愿景 (Phase 7: Future Vision)
 - [ ] **库存管理系统 (Inventory Management)**: 增加商品/零部件库存追踪，支持入库、出库及库存预警。
 - [ ] **高级权限控制 (Advanced RBAC)**: 实现精细化的多用户权限管理（如：普通员工仅录入，财务经理可审核）。
 - [ ] **微信小程序适配 (WeChat Mini Program)**: 开发原生微信小程序版本，方便无需安装App即可使用。
-- [ ] **高级报表导出 (Advanced Reporting)**: 支持导出美观的 PDF/Excel 月度、年度财务报表。
-- [ ] **云端同步与部署 (Cloud Deployment)**: 提供一键部署到阿里云/腾讯云的方案，支持多地协同办公。

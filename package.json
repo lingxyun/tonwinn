@@ -1,7 +1,7 @@
 {
   "name": "financial-system",
   "private": true,
-  "version": "0.1.80",
+  "version": "0.1.89",
   "type": "module",
   "scripts": {
     "dev": "vite",
