@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldAlert, Key, Copy, Check, Loader2, Lock } from 'lucide-react';
+import { ShieldAlert, Key, Copy, Check, Loader2, Lock, Clock } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
 
@@ -12,18 +12,50 @@ const AuthorizationOverlay = ({ children }) => {
     const [isCopied, setIsCopied] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
     const [error, setError] = useState('');
+    const [licenseInfo, setLicenseInfo] = useState(null);
 
     useEffect(() => {
         initAuth();
     }, []);
+
+    // Monitor trial expiration
+    useEffect(() => {
+        if (isAuthorized && licenseInfo?.expiration) {
+            const now = Math.floor(Date.now() / 1000);
+            const timeLeft = licenseInfo.expiration - now;
+
+            if (timeLeft <= 0) {
+                handleExpiration();
+                return;
+            }
+
+            const timer = setTimeout(() => {
+                handleExpiration();
+            }, timeLeft * 1000);
+
+            return () => clearTimeout(timer);
+        }
+    }, [isAuthorized, licenseInfo]);
+
+    const handleExpiration = () => {
+        setIsAuthorized(false);
+        setLicenseInfo(null);
+        toast.error('试用期已结束', { description: '请购买正式授权以继续使用' });
+    };
 
     const initAuth = async () => {
         try {
             const mid = await invoke('get_machine_id');
             setMachineId(mid);
             if (licenseKey) {
-                const valid = await invoke('verify_license', { machineId: mid, licenseKey });
-                if (valid) setIsAuthorized(true);
+                const status = await invoke('verify_license', { machineId: mid, licenseKey });
+                if (status.valid) {
+                    setIsAuthorized(true);
+                    setLicenseInfo(status);
+                    if (status.kind === 'trial') {
+                        showTrialToast(status.expiration);
+                    }
+                }
             }
         } catch (e) {
             console.error('Auth initialization failed:', e);
@@ -31,6 +63,14 @@ const AuthorizationOverlay = ({ children }) => {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const showTrialToast = (expiration) => {
+        const date = new Date(expiration * 1000);
+        toast.info('试用模式', {
+            description: `授权有效期至: ${date.toLocaleString()}`,
+            duration: 5000
+        });
     };
 
     const handleVerify = async (e) => {
@@ -41,14 +81,20 @@ const AuthorizationOverlay = ({ children }) => {
         setIsVerifying(true);
         setError('');
         try {
-            const valid = await invoke('verify_license', { machineId, licenseKey: trimmedKey });
-            if (valid) {
+            const status = await invoke('verify_license', { machineId, licenseKey: trimmedKey });
+            if (status.valid) {
                 localStorage.setItem('license_key', trimmedKey);
                 setIsAuthorized(true);
-                toast.success('授权成功', { description: '软件已成功激活，感谢您的支持！' });
+                setLicenseInfo(status);
+
+                if (status.kind === 'trial') {
+                    showTrialToast(status.expiration);
+                } else {
+                    toast.success('授权成功', { description: '软件已成功激活，感谢您的支持！' });
+                }
             } else {
-                setError('激活码无效或与当前机器不匹配');
-                toast.error('授权失败');
+                setError(status.message || '激活码无效或与当前机器不匹配');
+                toast.error('授权失败', { description: status.message });
             }
         } catch (e) {
             setError(e.message || '系统校验异常');
@@ -83,7 +129,17 @@ const AuthorizationOverlay = ({ children }) => {
     }
 
     if (isAuthorized) {
-        return children;
+        return (
+            <>
+                {children}
+                {licenseInfo?.kind === 'trial' && (
+                    <div className="fixed bottom-4 right-4 z-[9999] bg-amber-500/10 backdrop-blur-md border border-amber-500/20 text-amber-600 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 shadow-lg animate-in slide-in-from-bottom-5">
+                        <Clock size={12} />
+                        试用模式
+                    </div>
+                )}
+            </>
+        );
     }
 
     return (
@@ -168,7 +224,7 @@ const AuthorizationOverlay = ({ children }) => {
                                         setLicenseKey(e.target.value);
                                         if (error) setError('');
                                     }}
-                                    placeholder="请输入 32 位激活码"
+                                    placeholder="请输入 32 位激活码或试用码"
                                     className={`w-full px-6 py-4 bg-slate-50 border rounded-3xl text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:outline-none transition-all font-mono ${error ? "border-rose-500 ring-4 ring-rose-500/10" : "border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                         }`}
                                 />

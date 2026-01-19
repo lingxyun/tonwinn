@@ -88,11 +88,87 @@ pub fn get_machine_id() -> Result<String, String> {
     Ok(machine_id)
 }
 
+use serde::Serialize;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+#[derive(Serialize)]
+pub struct LicenseStatus {
+    valid: bool,
+    kind: String, // "permanent", "trial", "none"
+    message: String,
+    expiration: Option<i64>,
+}
+
 #[tauri::command]
-pub fn verify_license(machine_id: &str, license_key: &str) -> bool {
-    if license_key.is_empty() { return false; }
-    // 算法：MD5(machine_id + SECRET_SALT)
+pub fn verify_license(machine_id: &str, license_key: &str) -> LicenseStatus {
+    let key = license_key.trim();
+    if key.is_empty() {
+        return LicenseStatus {
+            valid: false,
+            kind: "none".to_string(),
+            message: "未输入激活码".to_string(),
+            expiration: None,
+        };
+    }
+
+    // 1. Check Permanent License
+    // MD5(machine_id + SECRET_SALT)
     let combined = format!("{}{}", machine_id, SECRET_SALT);
-    let expected = format!("{:x}", md5::compute(combined));
-    license_key.trim().to_lowercase() == expected.to_lowercase()
+    let expected_permanent = format!("{:x}", md5::compute(combined));
+    
+    if key.to_lowercase() == expected_permanent.to_lowercase() {
+        return LicenseStatus {
+            valid: true,
+            kind: "permanent".to_string(),
+            message: "永久授权".to_string(),
+            expiration: None,
+        };
+    }
+
+    // 2. Check Trial License
+    // Format: TR-<HexTimestamp>-<Signature>
+    if key.starts_with("TR-") {
+        let parts: Vec<&str> = key.split('-').collect();
+        if parts.len() == 3 {
+            let hex_ts = parts[1];
+            let signature = parts[2];
+
+            // Verify Signature: MD5(machine_id + hex_ts + SECRET_SALT)
+            let trial_combined = format!("{}{}{}", machine_id, hex_ts, SECRET_SALT);
+            let expected_sig = format!("{:x}", md5::compute(trial_combined));
+
+            if signature.to_lowercase() == expected_sig.to_lowercase() {
+                // Verify Expiration
+                if let Ok(ts) = i64::from_str_radix(hex_ts, 16) {
+                    let now = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs() as i64;
+
+                    if now < ts {
+                         return LicenseStatus {
+                            valid: true,
+                            kind: "trial".to_string(),
+                            message: "试用授权".to_string(),
+                            expiration: Some(ts),
+                        };
+                    } else {
+                        return LicenseStatus {
+                            valid: false,
+                            kind: "trial".to_string(),
+                            message: "试用期已结束".to_string(),
+                            expiration: Some(ts),
+                        };
+                    }
+                }
+            }
+        }
+    }
+
+    LicenseStatus {
+        valid: false,
+        kind: "none".to_string(),
+        message: "激活码无效".to_string(),
+        expiration: None,
+    }
 }
