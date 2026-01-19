@@ -1,11 +1,11 @@
 {
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUelc1V09CYzZhZjc2d0ZpNi9IQU9Wc0RzcjEveEI5ZkZISlNTSVBETU9RV1k3ODRqU0ZYaytKWUhzdkdoaWFmL2llWmY2bGJDa0JqMlRRQm5vK2x4MGZiOFBvRVFacUE4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzY4ODE2MTIxCWZpbGU66bG86LeDQ1JNXzAuMS44OV94NjQtc2V0dXAuZXhlCjB6R3ZjSVoxQTl5dzg1WjJNSW9uN1BlaEUrREI1bjJGemNjdDdHbUU5U0xUa3dmRmxPR1BTZXM2cVg3azBhUHBGTzZCa2twZ2RBRWZ5SUNsNHVSN0R3PT0K",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUelc1V09CYzZhZi9Xa0kybGJYUlF2Mkg4eFUwTVhEaDB1aFczMndaVDVqR3YzSXBONys4bXRsS0d3anorTHhLOHJMbHpCU29HZHhqVFZtVnZQVkpNaysyL1lmdjYxOWdvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzY4ODE4NjQ5CWZpbGU66bG86LeDQ1JNXzAuMS44OV94NjQtc2V0dXAuZXhlCnNoZHVxMUZtTytnMTVxajQ5K2huaTFLQ2pabmo5NStaL2U0TXBpREVIYTRiK2hyYWFMNndyVDhhVW9UL0hLL2tTMHpvKzB2SHlFTG1vRkowU1BIRENnPT0K",
       "url": "https://gitee.com/wx_3a9051a7ee/tonwinn/releases/download/v0.1.89/鱼跃CRM_0.1.89_x64-setup.exe"
     }
   },
-  "pub_date": "2026-01-19T09:48:56.151Z",
+  "pub_date": "2026-01-19T10:31:04.456Z",
   "version": "0.1.89",
-  "notes": "版本 v0.1.89 回退更新说明：\n1. 应用户要求，已回退至 v0.1.84 的稳定逻辑版本，彻底解决了兼容性问题。\n2. 恢复了经典的授权注销交互模式。"
+  "notes": "版本 v0.1.90 回退更新说明：\n1. 应用户要求，已回退至 v0.1.84 的稳定逻辑版本，彻底解决了兼容性问题。\n2. 恢复了经典的授权注销交互模式。"
 }
