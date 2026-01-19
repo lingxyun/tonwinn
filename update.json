@@ -1,11 +1,11 @@
 {
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUelc1V09CYzZhZnlVSVQ2TVcwZmJYQVBpZnBhbkswMkRKYWxxT1NTK0RCaGVEU0JpV1ZzVmFEOURQNi91MmxuRVc4VEJEa1ZTVWlZTmMzM0NLNFBZQ1ZaWExtYXJRZlFnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzY4MDQ1NzQ2CWZpbGU66bG86LeDQ1JNXzAuMS44MF94NjQtc2V0dXAuZXhlCnRGUkRjQTR5eldCSXlSNXZVQmxoUitlaE94YjJUZE4wRmJueEhlTE96QW1haTREZ0pDTW1PNnVtZlQ4S2tqWnlTRTZ4VDZxdlU1WTZ0Z0owQ2JEOUFBPT0K",
-      "url": "https://gitee.com/wx_3a9051a7ee/tonwinn/releases/download/v0.1.80/鱼跃CRM_0.1.80_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUelc1V09CYzZhZjc2d0ZpNi9IQU9Wc0RzcjEveEI5ZkZISlNTSVBETU9RV1k3ODRqU0ZYaytKWUhzdkdoaWFmL2llWmY2bGJDa0JqMlRRQm5vK2x4MGZiOFBvRVFacUE4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzY4ODE2MTIxCWZpbGU66bG86LeDQ1JNXzAuMS44OV94NjQtc2V0dXAuZXhlCjB6R3ZjSVoxQTl5dzg1WjJNSW9uN1BlaEUrREI1bjJGemNjdDdHbUU5U0xUa3dmRmxPR1BTZXM2cVg3azBhUHBGTzZCa2twZ2RBRWZ5SUNsNHVSN0R3PT0K",
+      "url": "https://gitee.com/wx_3a9051a7ee/tonwinn/releases/download/v0.1.89/鱼跃CRM_0.1.89_x64-setup.exe"
     }
   },
-  "pub_date": "2026-01-19T17:25:00.000Z",
+  "pub_date": "2026-01-19T09:48:56.151Z",
   "version": "0.1.89",
   "notes": "版本 v0.1.89 回退更新说明：\n1. 应用户要求，已回退至 v0.1.84 的稳定逻辑版本，彻底解决了兼容性问题。\n2. 恢复了经典的授权注销交互模式。"
 }
