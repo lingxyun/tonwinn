@@ -1,0 +1,69 @@
+{
+    "versions": [
+        {
+            "version": "0.1.91",
+            "date": "2026-01-24",
+            "summary": "新增金额隐私遮罩功能，全站数据安全升级。",
+            "changes": [
+                {
+                    "type": "feat",
+                    "description": "新增金额隐私遮罩功能，一键隐藏/显示全站所有金额数据"
+                },
+                {
+                    "type": "feat",
+                    "description": "Dashboard 页面右上角添加快速切换按钮（眼睛图标）"
+                },
+                {
+                    "type": "feat",
+                    "description": "隐私模式下金额显示为 ¥***.**，保护演示及截屏隐私"
+                },
+                {
+                    "type": "feat",
+                    "description": "隐私状态自动持久化到本地，刷新页面无缝衔接"
+                },
+                {
+                    "type": "style",
+                    "description": "优化了 Dashboard 头部按钮布局与视觉表现"
+                }
+            ]
+        },
+        {
+            "version": "0.1.90",
+            "date": "2026-01-19",
+            "summary": "版本回退与稳定性优化。",
+            "changes": [
+                {
+                    "type": "fix",
+                    "description": "应用户要求，已回退至 v0.1.84 的稳定逻辑版本"
+                },
+                {
+                    "type": "fix",
+                    "description": "彻底解决部分环境下的数据链接异常问题"
+                },
+                {
+                    "type": "fix",
+                    "description": "恢复了经典的授权注销交互模式"
+                }
+            ]
+        },
+        {
+            "version": "0.1.84",
+            "date": "2026-01-10",
+            "summary": "基础架构升级与性能提升。",
+            "changes": [
+                {
+                    "type": "perf",
+                    "description": "优化了大量数据的加载性能，响应速度提升 30%"
+                },
+                {
+                    "type": "feat",
+                    "description": "新增数据文件夹一键打开功能"
+                },
+                {
+                    "type": "style",
+                    "description": "微调了深色模式下的对比度与易读性"
+                }
+            ]
+        }
+    ]
+}

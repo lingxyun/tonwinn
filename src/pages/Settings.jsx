@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { cn } from '../lib/utils';
-import { Save, Settings as SettingsIcon, Upload, X, RefreshCw, Info, ExternalLink, ArrowRight, User, Cloud, Key, ShieldCheck } from 'lucide-react';
+import { Save, Settings as SettingsIcon, Upload, X, RefreshCw, Info, ExternalLink, ArrowRight, User, Cloud, Key, ShieldCheck, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { feishuService } from '../services/feishuService';
 import { check } from '@tauri-apps/plugin-updater';
 import { getVersion } from '@tauri-apps/api/app';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { invoke } from '@tauri-apps/api/core';
+import ChangelogModal from '../components/settings/ChangelogModal';
 
 const Settings = () => {
     const { settings, updateSettings, feishuConfig, updateFeishuConfig } = useSettings();
@@ -27,6 +28,7 @@ const Settings = () => {
     const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
     const [appVersion, setAppVersion] = useState('');
     const [machineId, setMachineId] = useState('');
+    const [isChangelogOpen, setIsChangelogOpen] = useState(false);
 
     useEffect(() => {
         if (settings) {
@@ -433,6 +435,19 @@ const Settings = () => {
                             <ArrowRight size={14} className="text-slate-300 group-hover:text-primary group-hover:translate-x-1 transition-all" />
                         </a>
 
+                        <button
+                            onClick={() => setIsChangelogOpen(true)}
+                            className="flex items-center justify-between p-4 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group text-left w-full"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400">
+                                    <FileText size={18} />
+                                </div>
+                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">更新日志</span>
+                            </div>
+                            <ArrowRight size={14} className="text-slate-300 group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                        </button>
+
                         <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-emerald-100 dark:bg-emerald-900/20 rounded-lg text-emerald-600">
@@ -479,7 +494,12 @@ const Settings = () => {
                     </div>
                 </div>
             </div>
-        </div>
+
+            <ChangelogModal
+                isOpen={isChangelogOpen}
+                onClose={() => setIsChangelogOpen(false)}
+            />
+        </div >
     );
 };
 
