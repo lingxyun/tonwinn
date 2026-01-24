@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { ArrowUpRight, ArrowDownRight, Users, DollarSign, ShoppingBag, Activity, Trash2, Download, Upload, Plus, Database, RefreshCw } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Users, DollarSign, ShoppingBag, Activity, Trash2, Download, Upload, Plus, Database, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 import Modal from '../components/ui/Modal';
@@ -11,6 +11,8 @@ import AIInsightsCard from '../components/dashboard/AIInsightsCard';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { useData } from '../context/DataContext';
+import { usePrivacy } from '../context/PrivacyContext';
+import { formatCurrency } from '../utils/formatCurrency';
 import { save, ask } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
 
@@ -38,7 +40,7 @@ const CountUp = ({ value, prefix = "", suffix = "" }) => {
     return <span>{prefix}{displayValue.toLocaleString(undefined, { minimumFractionDigits: typeof value === 'number' && !Number.isInteger(value) ? 2 : 0, maximumFractionDigits: 2 })}{suffix}</span>;
 };
 
-const StatCard = ({ title, value, change, icon: Icon, trend, index, label = "较上月" }) => (
+const StatCard = ({ title, value, change, icon: Icon, trend, index, label = "较上月", isPrivacyMode }) => (
     <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -52,9 +54,9 @@ const StatCard = ({ title, value, change, icon: Icon, trend, index, label = "较
                 <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</p>
                 <h3 className="text-2xl font-bold mt-2 text-slate-900 dark:text-white">
                     {typeof value === 'string' && value.startsWith('¥') ? (
-                        <CountUp value={value.replace('¥', '').replace(/,/g, '')} prefix="¥" />
+                        isPrivacyMode ? '¥***.**' : <CountUp value={value.replace('¥', '').replace(/,/g, '')} prefix="¥" />
                     ) : (
-                        <CountUp value={value} />
+                        isPrivacyMode ? '***' : <CountUp value={value} />
                     )}
                 </h3>
             </div>
@@ -68,7 +70,7 @@ const StatCard = ({ title, value, change, icon: Icon, trend, index, label = "较
                 trend === 'up' ? "text-emerald-600 bg-emerald-500/10" : "text-rose-600 bg-rose-500/10"
             )}>
                 {trend === 'up' ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
-                {change}
+                {isPrivacyMode ? '**%' : change}
             </div>
             <span className="text-xs text-slate-400 dark:text-slate-500 ml-2">{label}</span>
         </div>
@@ -89,6 +91,7 @@ const Dashboard = () => {
     } = useData();
 
     const { setIsTxModalOpen } = useOutletContext();
+    const { isPrivacyMode, togglePrivacyMode } = usePrivacy();
     const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
 
     const netProfit = (localTransactions || []).reduce((acc, curr) => {
@@ -206,6 +209,18 @@ const Dashboard = () => {
                     >
                         <Trash2 className="w-5 h-5" />
                     </button>
+                    <button
+                        onClick={togglePrivacyMode}
+                        className={cn(
+                            "p-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl transition-all premium-shadow",
+                            isPrivacyMode
+                                ? "text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
+                                : "text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5"
+                        )}
+                        title={isPrivacyMode ? "显示金额" : "隐藏金额"}
+                    >
+                        {isPrivacyMode ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
                     <div className="flex bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-1.5 premium-shadow">
                         <button onClick={exportFullBackup} className="px-5 py-2 text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl transition-colors flex items-center gap-2.5" title="导出 1:1 数据库副本（推荐）">
                             <Database className="w-4 h-4" /> 系统全量备份
@@ -229,10 +244,10 @@ const Dashboard = () => {
 
             {/* Metrics Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                <StatCard index={0} title="年度总营收" value={`¥${contextStats?.totalRevenue || 0} `} change={contextStats?.growth || "+0%"} icon={DollarSign} trend="up" label="较去年" />
-                <StatCard index={1} title="预计资产结余" value={netProfit} change={contextStats?.profitMoM || "+0%"} icon={Activity} trend={contextStats?.profitTrend || (netProfit >= 0 ? "up" : "down")} />
-                <StatCard index={2} title="累计单据总数" value={contextStats?.totalOrders || 0} change={contextStats?.orderMoM || "+0%"} icon={ShoppingBag} trend={contextStats?.orderTrend || "up"} />
-                <StatCard index={3} title="当前活跃客户" value={contextStats?.activeCustomers || 0} change={contextStats?.customerMoM || "+0"} icon={Users} trend={contextStats?.customerTrend || "up"} />
+                <StatCard index={0} title="年度总营收" value={`¥${contextStats?.totalRevenue || 0} `} change={contextStats?.growth || "+0%"} icon={DollarSign} trend="up" label="较去年" isPrivacyMode={isPrivacyMode} />
+                <StatCard index={1} title="预计资产结余" value={netProfit} change={contextStats?.profitMoM || "+0%"} icon={Activity} trend={contextStats?.profitTrend || (netProfit >= 0 ? "up" : "down")} isPrivacyMode={isPrivacyMode} />
+                <StatCard index={2} title="累计单据总数" value={contextStats?.totalOrders || 0} change={contextStats?.orderMoM || "+0%"} icon={ShoppingBag} trend={contextStats?.orderTrend || "up"} isPrivacyMode={isPrivacyMode} />
+                <StatCard index={3} title="当前活跃客户" value={contextStats?.activeCustomers || 0} change={contextStats?.customerMoM || "+0"} icon={Users} trend={contextStats?.customerTrend || "up"} isPrivacyMode={isPrivacyMode} />
             </div>
 
             {/* Analysis Grid Section */}
@@ -327,7 +342,7 @@ const Dashboard = () => {
                                                     "px-8 py-6 text-lg font-black text-right tracking-tighter",
                                                     tx.type === 'Income' ? "text-emerald-600" : "text-slate-900 dark:text-white"
                                                 )}>
-                                                    {tx.type === 'Income' ? '+' : '-'} ¥{(tx.amount || 0).toLocaleString()}
+                                                    {tx.type === 'Income' ? '+' : '-'} {formatCurrency(tx.amount || 0, isPrivacyMode)}
                                                 </td>
                                                 <td className="px-8 py-6">
                                                     <div className={cn(

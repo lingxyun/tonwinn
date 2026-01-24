@@ -10,9 +10,12 @@ import TiltCard from '../components/ui/TiltCard';
 import CustomerForm from '../components/customers/CustomerForm';
 
 import { useData } from '../context/DataContext';
+import { usePrivacy } from '../context/PrivacyContext';
+import { formatCurrency } from '../utils/formatCurrency';
 
 const Customers = () => {
     const navigate = useNavigate();
+    const { isPrivacyMode } = usePrivacy();
     const {
         customers: customerList,
         transactions,
@@ -212,7 +215,7 @@ const Customers = () => {
                                 <div className="absolute right-0 top-0 w-24 h-24 bg-blue-50 dark:bg-blue-900/10 rounded-full -mr-8 -mt-8 blur-2xl group-hover:bg-blue-100 dark:group-hover:bg-blue-900/20 transition-colors duration-500"></div>
                                 <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2 relative z-10">当前余额</div>
                                 <div className="text-2xl font-black text-slate-900 dark:text-white font-mono flex items-baseline gap-1 relative z-10 group-hover:scale-105 transition-transform origin-left">
-                                    <span className="text-sm">¥</span>{selectedCustomer.balance?.toFixed(2) || '0.00'}
+                                    {formatCurrency(selectedCustomer.balance || 0, isPrivacyMode)}
                                 </div>
                             </TiltCard>
 
@@ -239,10 +242,10 @@ const Customers = () => {
                                 <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">客户价值</div>
                                 <div className="flex flex-col group-hover:scale-105 transition-transform origin-left">
                                     <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
-                                        <span className="text-sm text-slate-400 font-sans font-normal mr-1">总</span>¥{totalSpent.toFixed(0)}
+                                        <span className="text-sm text-slate-400 font-sans font-normal mr-1">总</span>{formatCurrency(totalSpent, isPrivacyMode)}
                                     </div>
                                     <div className="text-xs text-slate-500 mt-1">
-                                        平均客单价: ¥{aov.toFixed(2)}
+                                        平均客单价: {formatCurrency(aov, isPrivacyMode)}
                                     </div>
                                 </div>
                             </TiltCard>
@@ -324,7 +327,7 @@ const Customers = () => {
                                                 "px-6 py-3 text-right font-medium font-mono",
                                                 tx.type === 'Income' ? "text-emerald-600" : "text-slate-900 dark:text-slate-100"
                                             )}>
-                                                {tx.type === 'Income' ? '+' : '-'} ¥{tx.amount.toFixed(2)}
+                                                {tx.type === 'Income' ? '+' : '-'} {formatCurrency(tx.amount, isPrivacyMode)}
                                             </td>
                                             <td className="px-6 py-3">
                                                 <span className={cn(
@@ -577,7 +580,7 @@ const Customers = () => {
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="text-sm font-medium text-slate-900 dark:text-white font-mono">
-                                            ¥{customer.balance?.toFixed(2) || '0.00'}
+                                            {formatCurrency(customer.balance || 0, isPrivacyMode)}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
@@ -641,7 +644,7 @@ const Customers = () => {
                                 </div>
                                 <div className="flex flex-col items-end gap-1">
                                     <div className="text-sm font-black text-slate-900 dark:text-white font-mono">
-                                        ¥{customer.balance?.toFixed(2) || '0.00'}
+                                        {formatCurrency(customer.balance || 0, isPrivacyMode)}
                                     </div>
                                     <span className={cn(
                                         "px-2 py-0.5 rounded-full text-[10px] font-bold border",

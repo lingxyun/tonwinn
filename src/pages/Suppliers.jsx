@@ -10,9 +10,12 @@ import TiltCard from '../components/ui/TiltCard';
 import CustomerForm from '../components/customers/CustomerForm';
 
 import { useData } from '../context/DataContext';
+import { usePrivacy } from '../context/PrivacyContext';
+import { formatCurrency } from '../utils/formatCurrency';
 
 const Suppliers = () => {
     const navigate = useNavigate();
+    const { isPrivacyMode } = usePrivacy();
     const {
         customers: entityList,
         transactions,
@@ -216,7 +219,7 @@ const Suppliers = () => {
                                     "text-2xl font-black font-mono flex items-baseline gap-1 relative z-10 group-hover:scale-105 transition-transform origin-left",
                                     selectedSupplier.balance < 0 ? "text-rose-600" : "text-emerald-600"
                                 )}>
-                                    <span className="text-sm">¥</span>{parseFloat(selectedSupplier.balance).toFixed(2)}
+                                    {formatCurrency(parseFloat(selectedSupplier.balance), isPrivacyMode)}
                                 </div>
                                 <div className="text-[10px] text-slate-400 mt-1 relative z-10">
                                     {selectedSupplier.balance < 0 ? '需支付货款' : '预付款结余'}
@@ -246,10 +249,10 @@ const Suppliers = () => {
                                 <div className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase mb-2">采购总额</div>
                                 <div className="flex flex-col group-hover:scale-105 transition-transform origin-left">
                                     <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-                                        <span className="text-sm text-slate-400 font-sans font-normal mr-1">共</span>¥{totalSpent.toFixed(0)}
+                                        <span className="text-sm text-slate-400 font-sans font-normal mr-1">共</span>{formatCurrency(totalSpent, isPrivacyMode)}
                                     </div>
                                     <div className="text-xs text-slate-500 mt-1">
-                                        笔均采购: ¥{aov.toFixed(2)}
+                                        笔均采购: {formatCurrency(aov, isPrivacyMode)}
                                     </div>
                                 </div>
                             </TiltCard>
@@ -331,7 +334,7 @@ const Suppliers = () => {
                                                 "px-6 py-3 text-right font-bold font-mono text-base",
                                                 tx.type === 'Income' ? "text-emerald-600" : "text-slate-900 dark:text-slate-100"
                                             )}>
-                                                {tx.type === 'Income' ? '+' : '-'} ¥{tx.amount.toFixed(2)}
+                                                {tx.type === 'Income' ? '+' : '-'} {formatCurrency(tx.amount, isPrivacyMode)}
                                             </td>
                                             <td className="px-6 py-3">
                                                 <span className={cn(
@@ -521,7 +524,7 @@ const Suppliers = () => {
                                         "text-sm font-black font-mono",
                                         supplier.balance < 0 ? "text-rose-600" : "text-emerald-600"
                                     )}>
-                                        ¥{parseFloat(supplier.balance).toFixed(2)}
+                                        {formatCurrency(parseFloat(supplier.balance), isPrivacyMode)}
                                     </div>
                                     <span className={cn(
                                         "px-2 py-0.5 rounded-full text-[10px] font-bold border",
@@ -655,7 +658,7 @@ const Suppliers = () => {
                                             "text-sm font-bold",
                                             supplier.balance < 0 ? "text-rose-600" : "text-emerald-600"
                                         )}>
-                                            ¥{parseFloat(supplier.balance).toFixed(2)}
+                                            {formatCurrency(parseFloat(supplier.balance), isPrivacyMode)}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">

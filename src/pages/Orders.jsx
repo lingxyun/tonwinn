@@ -11,9 +11,12 @@ import { ask } from '@tauri-apps/plugin-dialog';
 import TiltCard from '../components/ui/TiltCard';
 
 import { useData } from '../context/DataContext';
+import { usePrivacy } from '../context/PrivacyContext';
+import { formatCurrency } from '../utils/formatCurrency';
 
 const Orders = () => {
     const { setIsTxModalOpen } = useOutletContext();
+    const { isPrivacyMode } = usePrivacy();
     const {
         transactions: txList,
         customers,
@@ -193,7 +196,7 @@ const Orders = () => {
                     <div>
                         <div className="text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider group-hover:underline">今日收款</div>
                         <div className="text-2xl font-black text-emerald-700 dark:text-emerald-300 font-mono mt-1">
-                            <span className="text-sm mr-1">¥</span>{todayStats.income.toFixed(2)}
+                            {formatCurrency(todayStats.income, isPrivacyMode)}
                         </div>
                     </div>
                     <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-800/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
@@ -218,7 +221,7 @@ const Orders = () => {
                     <div>
                         <div className="text-amber-600 dark:text-amber-400 text-xs font-bold uppercase tracking-wider group-hover:underline">本月待结清</div>
                         <div className="text-2xl font-black text-amber-700 dark:text-amber-300 font-mono mt-1">
-                            <span className="text-sm mr-1">¥</span>{pendingAmount.toFixed(2)}
+                            {formatCurrency(pendingAmount, isPrivacyMode)}
                         </div>
                     </div>
                     <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-800/30 flex items-center justify-center text-amber-600 dark:text-amber-400">
@@ -395,7 +398,7 @@ const Orders = () => {
                                             "px-6 py-4 text-lg font-bold font-mono text-right tracking-tight",
                                             tx.type === 'Income' ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-slate-100"
                                         )}>
-                                            {tx.type === 'Income' ? '+' : '-'} ¥{tx.amount.toFixed(2)}
+                                            {tx.type === 'Income' ? '+' : '-'} {formatCurrency(tx.amount, isPrivacyMode)}
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <span className={cn(
@@ -483,7 +486,7 @@ const Orders = () => {
                                         "text-lg font-black tracking-tight",
                                         tx.type === 'Income' ? "text-emerald-600" : "text-slate-900 dark:text-white"
                                     )}>
-                                        {tx.type === 'Income' ? '+' : '-'} ¥{tx.amount.toFixed(2)}
+                                        {tx.type === 'Income' ? '+' : '-'} {formatCurrency(tx.amount, isPrivacyMode)}
                                     </div>
                                 </div>
                                 <div className="text-sm text-slate-600 dark:text-slate-400 line-clamp-1">{tx.description}</div>

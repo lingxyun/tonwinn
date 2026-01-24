@@ -10,6 +10,7 @@ import Accounts from './pages/Accounts';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SettingsProvider } from './context/SettingsContext';
+import { PrivacyProvider } from './context/PrivacyContext';
 import Settings from './pages/Settings';
 
 import { DataProvider } from './context/DataContext';
@@ -41,32 +42,34 @@ function App() {
     <HashRouter>
       <AuthProvider>
         <SettingsProvider>
-          <DataProvider>
-            <AuthorizationOverlay>
-              <Routes>
-                <Route path="/login" element={
-                  <PublicRoute>
-                    <Login />
-                  </PublicRoute>
-                } />
-                <Route path="/" element={
-                  <ProtectedRoute>
-                    <Layout />
-                  </ProtectedRoute>
-                }>
-                  <Route index element={<Dashboard />} />
-                  <Route path="customers" element={<Customers />} />
-                  <Route path="suppliers" element={<Suppliers />} />
-                  <Route path="orders" element={<Orders />} />
-                  <Route path="orders/categories" element={<Categories />} />
-                  <Route path="accounts" element={<Accounts />} />
-                  <Route path="settings" element={<Settings />} />
-                </Route>
-              </Routes>
-              <Toaster position="top-center" richColors />
-              <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-            </AuthorizationOverlay>
-          </DataProvider>
+          <PrivacyProvider>
+            <DataProvider>
+              <AuthorizationOverlay>
+                <Routes>
+                  <Route path="/login" element={
+                    <PublicRoute>
+                      <Login />
+                    </PublicRoute>
+                  } />
+                  <Route path="/" element={
+                    <ProtectedRoute>
+                      <Layout />
+                    </ProtectedRoute>
+                  }>
+                    <Route index element={<Dashboard />} />
+                    <Route path="customers" element={<Customers />} />
+                    <Route path="suppliers" element={<Suppliers />} />
+                    <Route path="orders" element={<Orders />} />
+                    <Route path="orders/categories" element={<Categories />} />
+                    <Route path="accounts" element={<Accounts />} />
+                    <Route path="settings" element={<Settings />} />
+                  </Route>
+                </Routes>
+                <Toaster position="top-center" richColors />
+                <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+              </AuthorizationOverlay>
+            </DataProvider>
+          </PrivacyProvider>
         </SettingsProvider>
       </AuthProvider>
     </HashRouter>

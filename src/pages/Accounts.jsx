@@ -4,10 +4,13 @@ import { customers } from '../utils/mockData';
 import { DollarSign, ArrowUpRight, ArrowDownRight, TrendingUp } from 'lucide-react';
 import Customers from './Customers';
 import { useData } from '../context/DataContext';
+import { usePrivacy } from '../context/PrivacyContext';
+import { formatCurrency } from '../utils/formatCurrency';
 
 const Accounts = () => {
     // Accounts can be treated as an alias for Customers with more focus on balances, or a Ledger view.
     const { customers: localCustomers, transactions } = useData();
+    const { isPrivacyMode } = usePrivacy();
 
     // Calculate generic stats avoiding "Balance"
     // Total Volume of Transactions
@@ -22,7 +25,7 @@ const Accounts = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg shadow-blue-200">
                     <p className="text-blue-100 text-sm font-medium">总交易流水</p>
-                    <h3 className="text-3xl font-bold mt-2">¥{totalVolume.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}</h3>
+                    <h3 className="text-3xl font-bold mt-2">{formatCurrency(totalVolume, isPrivacyMode)}</h3>
                     <div className="mt-4 flex items-center text-blue-100 text-sm">
                         <TrendingUp className="w-4 h-4 mr-1" />
                         <span>业务往来合计</span>
