@@ -1,11 +1,11 @@
 {
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUelc1V09CYzZhZjVaMUlRZEk3dWcvaG9QM25ESmVDVGJsa0NYaEc5ZER4UUhmc0VoaFc1OE93ckMvRXJhQm9qQmY1ZWx1TXg3dnF5blgyamhVWVViREw1L0FxT1R4V2d3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzY4ODE5MDA2CWZpbGU66bG86LeDQ1JNXzAuMS45MF94NjQtc2V0dXAuZXhlCktUVitXYWJhNFdyOHdQR2Z5Mk1saUFORVVuVmJ3S29IZWpYZUxQMzJHMllITnhTeDA2cERNaTVOMFZSc3c5bjVVazlQbGZvSjVDaTAzWVJ3a0hseUJRPT0K",
-      "url": "https://gitee.com/wx_3a9051a7ee/tonwinn/releases/download/v0.1.90/鱼跃CRM_0.1.90_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUelc1V09CYzZhZjNhVHYvRXdmZjV5SVY3ZUh5SWtiZEJjNkxLUy91QStsKzBUeTRwZmlTLzNqSmg5bDNuSWNXWk42akNTaDlaSGxGWnpOYXdBSDQvNTZQVzZyRW8zQVFnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzY5MjUwOTEwCWZpbGU66bG86LeDQ1JNXzAuMS45MV94NjQtc2V0dXAuZXhlCllqZnF1LzUwQXRoU0t4SkcxN29ER1N3R3gxay9vekEzZkFmWXBzRFl0ckVINkxVTEx3Y0kzZkJJR1RZWGlrRzVKa2ZEeEZhbm5WVEJERnZMOUJNS0J3PT0K",
+      "url": "https://gitee.com/wx_3a9051a7ee/tonwinn/releases/download/v0.1.91/鱼跃CRM_0.1.91_x64-setup.exe"
     }
   },
-  "pub_date": "2026-01-24T10:01:42.000Z",
+  "pub_date": "2026-01-24T10:35:12.756Z",
   "version": "0.1.91",
   "notes": "版本 v0.1.91 更新说明：\n\n✨ 新功能\n• 新增金额隐私遮罩功能\n  - 一键隐藏/显示全站所有金额数据\n  - Dashboard 页面右上角添加眼睛图标切换按钮\n  - 隐私模式下所有金额显示为 ¥***.**\n  - 状态自动保存，刷新后保持\n  - 适用于演示、截屏等场景，保护财务隐私\n\n📦 覆盖范围\n• Dashboard - 统计卡片、交易列表\n• 客户管理 - 余额、价值统计、交易记录\n• 供应商管理 - 账户余额、采购总额、往来记录\n• 订单管理 - 今日收款、待结清、订单金额\n• 账目详情 - 总交易流水"
 }
